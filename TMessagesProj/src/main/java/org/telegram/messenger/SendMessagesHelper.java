@@ -103,6 +103,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -1146,6 +1147,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             if (message.type == 4) {
                                 uploadMultiMedia(message, null, encryptedFile, location);
                             } else {
+                                Log.d("MyTest", "Send encrypted request 1");
                                 getSecretChatHelper().performSendEncryptedRequest(decryptedMessage, message.obj.messageOwner, message.encryptedChat, encryptedFile, message.originalPath, message.obj);
                             }
                         }
@@ -3825,8 +3827,36 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     public void sendMessage(SendMessageParams sendMessageParams) {
-        String message = sendMessageParams.message;
+        boolean enableMultiMessages = false;
+
+        String prependMessage = "0.0.4 ";
+
+        String message = prependMessage + sendMessageParams.message;
         String caption = sendMessageParams.caption;
+
+        // match for strings such as: 10x"abc"
+        String sendMultipleTimesPattern = "^\\d*[x\\*]\".*\"$";
+
+        if (enableMultiMessages) {
+            if (Pattern.matches(sendMultipleTimesPattern, message)) {
+                String[] split = message.split("x|\"");
+
+                if (split.length == 2) {
+                    try {
+
+                        int n = Integer.parseInt(split[0]);
+                        String msg = split[1];
+
+                        for (int i = 0; i < n; i++) {
+                            // send message msg
+                        }
+                    } catch (NumberFormatException e) {
+
+                    }
+                }
+            }
+        }
+
         TLRPC.MessageMedia location = sendMessageParams.location;
         TLRPC.TL_photo photo = sendMessageParams.photo;
         VideoEditedInfo videoEditedInfo = sendMessageParams.videoEditedInfo;
@@ -4826,6 +4856,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     } else {
                         reqSend.media = new TLRPC.TL_decryptedMessageMediaEmpty();
                     }
+                    Log.d("MyTest", "Send encrypted request 2");
                     getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                     if (retryMessageObject == null) {
                         getMediaDataController().cleanDraft(peer, replyToTopMsg != null ? replyToTopMsg.getId() : 0, false);
@@ -5407,6 +5438,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         }
                         reqSend.media.lat = location.geo.lat;
                         reqSend.media._long = location.geo._long;
+                        Log.d("MyTest", "Send encrypted request 3");
                         getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                     } else if (type == 2 || type == 9 && photo != null) {
                         TLRPC.PhotoSize small = photo.sizes.get(0);
@@ -5455,6 +5487,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             encryptedFile.access_hash = big.location.secret;
                             reqSend.media.key = big.location.key;
                             reqSend.media.iv = big.location.iv;
+                            Log.d("MyTest", "Send encrypted request 4");
                             getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, encryptedFile, null, newMsgObj);
                         }
                     } else if (type == 3) {
@@ -5516,6 +5549,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             encryptedFile.access_hash = document.access_hash;
                             reqSend.media.key = document.key;
                             reqSend.media.iv = document.iv;
+                            Log.d("MyTest", "Send encrypted request 5");
                             getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, encryptedFile, null, newMsgObj);
                         }
                     } else if (type == 6) {
@@ -5524,6 +5558,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         reqSend.media.first_name = user.first_name;
                         reqSend.media.last_name = user.last_name;
                         reqSend.media.user_id = user.id;
+                        Log.d("MyTest", "Send encrypted request 6");
                         getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                     } else if (type == 7 || type == 9 && document != null) {
                         if (document.access_hash != 0 && (MessageObject.isStickerDocument(document) || MessageObject.isAnimatedStickerDocument(document, true))) {
@@ -5547,6 +5582,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                                 delayedMessage.obj = newMsgObj;
                                 performSendDelayedMessage(delayedMessage);
                             } else {
+                                Log.d("MyTest", "Send encrypted request 7");
                                 getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                             }
                         } else {
@@ -5601,6 +5637,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                                 encryptedFile.access_hash = document.access_hash;
                                 reqSend.media.key = document.key;
                                 reqSend.media.iv = document.iv;
+                                Log.d("MyTest", "Send encrypted request 8");
                                 getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, encryptedFile, null, newMsgObj);
                             }
                         }
@@ -5852,6 +5889,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         decryptedMessage.media.size = message.videoEditedInfo.estimatedSize;
                         decryptedMessage.media.key = message.videoEditedInfo.key;
                         decryptedMessage.media.iv = message.videoEditedInfo.iv;
+                        Log.d("MyTest", "Send encrypted request 9");
                         getSecretChatHelper().performSendEncryptedRequest(decryptedMessage, message.obj.messageOwner, message.encryptedChat, message.videoEditedInfo.encryptedFile, message.originalPath, message.obj);
                         message.videoEditedInfo.encryptedFile = null;
                         return;
@@ -6252,6 +6290,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         if (found) {
                             getMessagesStorage().replaceMessageIfExists(arrayList.get(0).obj.messageOwner, null, null, false);
                         }
+                        Log.d("MyTest", "Send encrypted request 10");
                         getSecretChatHelper().performSendEncryptedRequest((TLRPC.DecryptedMessage) message.sendEncryptedRequest, message.obj.messageOwner, message.encryptedChat, null, null, message.obj);
                     }
                 });
