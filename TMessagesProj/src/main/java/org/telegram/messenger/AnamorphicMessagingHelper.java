@@ -30,13 +30,9 @@ public class AnamorphicMessagingHelper {
     private static final String SALT = "ssshhhhhhhhhhh!!!!";
 
     // This method use to encrypt to string
-    public static byte[] encrypt(String strToEncrypt)
+    public static byte[] encrypt(String strToEncrypt, byte[] iv)
     {
         try {
-
-            // Create default byte array
-            byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0 };
             IvParameterSpec ivspec
                     = new IvParameterSpec(iv);
 
@@ -72,14 +68,9 @@ public class AnamorphicMessagingHelper {
     }
 
     // This method use to decrypt to string
-    public static String decrypt(byte[] strToDecrypt)
+    public static String decrypt(byte[] strToDecrypt, byte[] iv)
     {
         try {
-
-            // Default byte array
-            byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0 };
-
             // Create IvParameterSpec object and assign with
             // constructor
             IvParameterSpec ivspec
