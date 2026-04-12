@@ -3829,7 +3829,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     public void sendMessage(SendMessageParams sendMessageParams) {
         boolean enableMultiMessages = false;
 
-        String prependMessage = "0.0.4 ";
+        String prependMessage = ""; // "0.0.7 ";
 
         String message = prependMessage + sendMessageParams.message;
         String caption = sendMessageParams.caption;

@@ -594,6 +594,7 @@ public class SecretChatHelper extends BaseController {
 
     /**
      * Prints the elements of the buffer between index 0 and the current position
+     *
      * @param bufferName
      * @param buffer
      */
@@ -601,8 +602,17 @@ public class SecretChatHelper extends BaseController {
         printBuffer(bufferName, buffer, buffer.length());
     }
 
+    private void addRandomPadding(NativeByteBuffer buffer, int n) {
+        byte[] b = new byte[n];
+        Utilities.random.nextBytes(b);
+        Log.d("MyTest", String.format("Before adding %d: %d", n, buffer.length()));
+        buffer.writeBytes(b);
+        Log.d("MyTest", String.format("After adding %d: %d", n, buffer.length()));
+    }
+
     /**
      * Prints the elements of the buffer between index 0 and length
+     *
      * @param bufferName
      * @param buffer
      * @param length
@@ -630,6 +640,53 @@ public class SecretChatHelper extends BaseController {
         // Log.d("MyTest", String.format("buffer.length() (after): %d\n%s", length, line));
     }
 
+    private void testNativeByteBuffer() {
+        try {
+            NativeByteBuffer testBuffer = new NativeByteBuffer(16);
+
+            Log.d("MyTest", String.format("\"\": %d", testBuffer.length()));
+
+            testBuffer.writeString("a");
+            Log.d("MyTest", String.format("\"a\" (%d bytes): %d",
+                    "a".getBytes("UTF-8").length,
+                    testBuffer.length()
+            ));
+            testBuffer = new NativeByteBuffer(16);
+            testBuffer.writeString("ab");
+            Log.d("MyTest", String.format("\"ab\" (%d bytes): %d",
+                    "ab".getBytes("UTF-8").length,
+                    testBuffer.length()
+            ));
+            testBuffer = new NativeByteBuffer(16);
+            testBuffer.writeString("abc");
+            Log.d("MyTest", String.format("\"abc\" (%d bytes): %d",
+                    "abc".getBytes("UTF-8").length,
+                    testBuffer.length()
+            ));
+            testBuffer = new NativeByteBuffer(16);
+            testBuffer.writeString("abcd");
+            Log.d("MyTest", String.format("\"abcd\" (%d bytes): %d",
+                    "abcd".getBytes("UTF-8").length,
+                    testBuffer.length()
+            ));
+            testBuffer = new NativeByteBuffer(16);
+            testBuffer.writeString("abcde");
+            Log.d("MyTest", String.format("\"abcde\" (%d bytes): %d",
+                    "abcde".getBytes("UTF-8").length,
+                    testBuffer.length()
+            ));
+
+            testBuffer = new NativeByteBuffer(16);
+            testBuffer.writeString("abcdef");
+            Log.d("MyTest", String.format("\"abcdef\" (%d bytes): %d",
+                    "abcdef".getBytes("UTF-8").length,
+                    testBuffer.length()
+            ));
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+    }
+
     protected void performSendEncryptedRequest(TLRPC.DecryptedMessage req, TLRPC.Message newMsgObj, TLRPC.EncryptedChat chat, TLRPC.InputEncryptedFile encryptedFile, String originalPath, MessageObject newMsg) {
         Log.d("MyTest", "performSendEncryptedRequest 1");
         if (req == null || chat.auth_key == null || chat instanceof TLRPC.TL_encryptedChatRequested || chat instanceof TLRPC.TL_encryptedChatWaiting) {
@@ -642,6 +699,8 @@ public class SecretChatHelper extends BaseController {
 
         String msg = req.message;
 
+        // the block size is 16, but we must leave at least 1 block free at the end for padding,
+        // since we cannot guarantee the input will always be a multiple of 16
         String sendAnamorphicPattern = "^.*\\(.{1,15}\\)$";
         String aMsg;
 
@@ -742,8 +801,24 @@ public class SecretChatHelper extends BaseController {
                 toEncryptObject.serializeToStream(toEncrypt);
 
                 len = toEncrypt.length();
-                int extraLen = len % 16 != 0 ? 16 - len % 16 : 0;
-                extraLen += (2 + Utilities.random.nextInt(3)) * 16;
+                int extraLen = len % 16 != 0 ? 16 - len % 16 : 0; // { 0, 4, 8, 12}
+
+                Log.d("MyTest",
+                        String.format("len: %d\nmessage.getBytes(\"UTF-8\").length: %d\nextraLen: %d",
+                                len,
+                                req.message.getBytes("UTF-8").length,
+                                extraLen
+                        )
+                );
+
+                // (1-3)   + n * 16 bytes: 4
+                // (4-7)   + n * 16 bytes: 0
+                // (8-11)  + n * 16 bytes: 12
+                // (12-15) + n * 16 bytes: 8
+
+                // testNativeByteBuffer();
+
+                extraLen += (2 + Utilities.random.nextInt(3)) * 16; // adds element in { 32, 48, 64}
 
                 Log.d("MyTest", String.format("extraLen (padding length): %d", extraLen));
 
@@ -752,30 +827,39 @@ public class SecretChatHelper extends BaseController {
                 dataForEncryption.writeBytes(toEncrypt);
 
                 if (aMsg == null) {
-                    byte[] b = new byte[extraLen];
-                    Utilities.random.nextBytes(b);
-                    Log.d("MyTest", String.format("Before adding %d: %d", extraLen, dataForEncryption.length()));
-                    dataForEncryption.writeBytes(b);
-                    Log.d("MyTest", String.format("After adding %d: %d", extraLen, dataForEncryption.length()));
+                    addRandomPadding(dataForEncryption, extraLen);
                 } else {
-                    byte[] iv = { 0, 1, 2, 3, 4, 5, 6, 7,
-                            8, 9, 10, 11, 12, 13, 14, 15 };
-                            // new byte[16];
+                    byte[] iv = {0, 1, 2, 3, 4, 5, 6, 7,
+                            8, 9, 10, 11, 12, 13, 14, 15};
+                    // new byte[16];
                     // Utilities.random.nextBytes(iv);
 
                     byte[] ciphertext = AnamorphicMessagingHelper.encrypt(aMsg, iv);
 
-                    int paddingNeeded = extraLen - 32;
-                    byte[] padding = new byte[paddingNeeded];
-                    Utilities.random.nextBytes(padding);
+                    // the length check is currently redundant, since length of the anamorphic message is also
+                    // checked by the regex matching for anamorphic messages
+                    if (ciphertext != null && ciphertext.length == 16) {
+                        int paddingNeeded = extraLen - 32;
+                        byte[] padding = new byte[paddingNeeded];
+                        Utilities.random.nextBytes(padding);
 
-                    Log.d("MyTest", "Append IV");
-                    dataForEncryption.writeBytes(iv);
-                    dataForEncryption.writeBytes(ciphertext);
-                    dataForEncryption.writeBytes(padding);
+                        Log.d("MyTest", "Append IV");
 
-                    printBuffer("dataForEncryption", dataForEncryption);
-                    printBuffer("dataForEncryption", dataForEncryption);
+                        // remember, NativeByteBuffer.writeBytes(byte[] b) does not prepend b.length!
+                        // writing more data than there is space for in the buffer causes an exception to be thrown
+                        dataForEncryption.writeBytes(iv);
+                        Log.d("MyTest", String.format("Before adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
+                        dataForEncryption.writeBytes(ciphertext);
+                        Log.d("MyTest", String.format("Between adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
+                        dataForEncryption.writeBytes(padding);
+                        Log.d("MyTest", String.format("After adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
+
+                        printBuffer("dataForEncryption", dataForEncryption);
+                    } else if (ciphertext == null) {
+                        Log.e("MyTest", "ciphertext is null!");
+                    } else {
+                        Log.e("MyTest", String.format("ciphertext.length is not 16!\nIt is %d!", ciphertext.length));
+                    }
                 }
 
                 /*
@@ -1018,7 +1102,7 @@ public class SecretChatHelper extends BaseController {
                     newMessage.media = new TLRPC.TL_messageMediaWebPage();
                     newMessage.media.webpage = new TLRPC.TL_webPageUrlPending();
                     newMessage.media.webpage.url = decryptedMessage.media.url;
-                }  else if (decryptedMessage.media instanceof TLRPC.TL_decryptedMessageMediaContact) {
+                } else if (decryptedMessage.media instanceof TLRPC.TL_decryptedMessageMediaContact) {
                     newMessage.media = new TLRPC.TL_messageMediaContact();
                     newMessage.media.last_name = decryptedMessage.media.last_name;
                     newMessage.media.first_name = decryptedMessage.media.first_name;

@@ -3,21 +3,11 @@ package org.telegram.messenger;
 import com.google.android.exoplayer2.util.Log;
 
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.security.spec.KeySpec;
-import java.util.Base64;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -58,11 +48,16 @@ public class AnamorphicMessagingHelper {
             // Return encrypted string
             byte[] b = strToEncrypt.getBytes(StandardCharsets.UTF_8);
 
+            /*
+                TODO: check if some characters in the anamorphic message take up more bytes than others.
+                If so, we need a better way to validate the input
+            */
+            Log.d("MyTest", String.format("aMsg.getBytes().length: %d", b.length));
+
             return cipher.doFinal(b);
         }
         catch (Exception e) {
-            System.out.println("Error while encrypting: "
-                    + e.toString());
+            Log.e("MyTest", String.format("Error while encrypting: %s", e.toString()));
         }
         return null;
     }
@@ -98,8 +93,7 @@ public class AnamorphicMessagingHelper {
             return new String(cipher.doFinal(strToDecrypt));
         }
         catch (Exception e) {
-            System.out.println("Error while decrypting: "
-                    + e.toString());
+            Log.e("MyTest", String.format("Error while decrypting: %s", e.toString()));
         }
         return null;
     }
