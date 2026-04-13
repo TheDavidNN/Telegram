@@ -20,7 +20,7 @@ public class AnamorphicMessagingHelper {
     private static final String SALT = "ssshhhhhhhhhhh!!!!";
 
     // This method use to encrypt to string
-    public static byte[] encrypt(String strToEncrypt, byte[] iv)
+    public static byte[] encrypt(byte[] input, byte[] iv)
     {
         try {
             IvParameterSpec ivspec
@@ -45,16 +45,12 @@ public class AnamorphicMessagingHelper {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey,
                     ivspec);
 
-            // Return encrypted string
-            byte[] b = strToEncrypt.getBytes(StandardCharsets.UTF_8);
-
             /*
                 TODO: check if some characters in the anamorphic message take up more bytes than others.
                 If so, we need a better way to validate the input
             */
-            Log.d("MyTest", String.format("aMsg.getBytes().length: %d", b.length));
-
-            return cipher.doFinal(b);
+            // Return encrypted string
+            return cipher.doFinal(input);
         }
         catch (Exception e) {
             Log.e("MyTest", String.format("Error while encrypting: %s", e.toString()));
@@ -63,7 +59,7 @@ public class AnamorphicMessagingHelper {
     }
 
     // This method use to decrypt to string
-    public static String decrypt(byte[] strToDecrypt, byte[] iv)
+    public static byte[] decrypt(byte[] strToDecrypt, byte[] iv)
     {
         try {
             // Create IvParameterSpec object and assign with
@@ -90,7 +86,7 @@ public class AnamorphicMessagingHelper {
             cipher.init(Cipher.DECRYPT_MODE, secretKey,
                     ivspec);
             // Return decrypted string
-            return new String(cipher.doFinal(strToDecrypt));
+            return cipher.doFinal(strToDecrypt);
         }
         catch (Exception e) {
             Log.e("MyTest", String.format("Error while decrypting: %s", e.toString()));
