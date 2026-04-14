@@ -76,6 +76,8 @@ public class SecretChatHelper extends BaseController {
 
     public static int CURRENT_SECRET_CHAT_LAYER = 151;
 
+    public static int nextPaddingRand = Utilities.random.nextInt(3);
+
     private ArrayList<Integer> sendingNotifyLayer = new ArrayList<>();
     private SparseArray<ArrayList<TL_decryptedMessageHolder>> secretHolesQueue = new SparseArray<>();
     private SparseArray<ArrayList<TLRPC.Update>> pendingSecretMessages = new SparseArray<>();
@@ -732,8 +734,11 @@ public class SecretChatHelper extends BaseController {
         } else {
             int remainingBytes = plaintext.length - 29;
 
+            // amount of padding needed, excluding the mandatory 2 bytes
+            int extraPaddingNeeded = remainingBytes % 16 == 0 ? 0 : 16 - (remainingBytes % 16);
+
             // how many blocks needed after the first two
-            byte extraBlocksNeeded = (byte) ((remainingBytes + 16 - (remainingBytes % 16)) / 16);
+            byte extraBlocksNeeded = (byte) ((remainingBytes + extraPaddingNeeded) / 16);
 
             blocksNeeded = (byte) (2 + extraBlocksNeeded);
         }
@@ -741,6 +746,12 @@ public class SecretChatHelper extends BaseController {
         int bytesNeededForCiphertext = blocksNeeded * 16;
 
         if (bytesNeededForCiphertext > maxCiphertextSize) {
+            Log.e("MyTest", String.format(
+                    "blocksNeeded: %d\nbytesNeededForCiphertext: %d\nmaxCiphertextSize: %d",
+                    blocksNeeded,
+                    bytesNeededForCiphertext,
+                    maxCiphertextSize
+            ));
             throw new IllegalArgumentException("aMsg is too long to be encrypted!");
         }
 
@@ -961,9 +972,27 @@ public class SecretChatHelper extends BaseController {
                     (12-15) + n * 16 bytes: 8
                 */
 
-                extraLen += (2 + Utilities.random.nextInt(3)) * 16; // adds element in { 32, 48, 64}
+                extraLen += (2 + nextPaddingRand) * 16; // adds element in { 32, 48, 64}
+                nextPaddingRand = Utilities.random.nextInt(3);
 
                 Log.d("MyTest", String.format("extraLen (padding length): %d", extraLen));
+
+                int minNextBytes;
+                if (nextPaddingRand == 0) {
+                    minNextBytes = 14;
+                } else if (nextPaddingRand == 1) {
+                    minNextBytes = 29;
+                } else {
+                    minNextBytes = 45;
+                }
+
+                int maxNextBytes = 29 + (nextPaddingRand * 16);
+                Log.d("MyTest", String.format(
+                        "Create next random!\nnextPaddingRand: %d\nNext aMsg can contain min. %d bytes (%d if msg is correct length)",
+                        nextPaddingRand,
+                        minNextBytes,
+                        maxNextBytes
+                ));
 
                 NativeByteBuffer dataForEncryption = new NativeByteBuffer(len + extraLen);
                 toEncrypt.position(0);
