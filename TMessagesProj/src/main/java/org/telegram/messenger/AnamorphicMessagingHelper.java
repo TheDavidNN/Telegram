@@ -20,7 +20,7 @@ public class AnamorphicMessagingHelper {
     private static final String SALT = "ssshhhhhhhhhhh!!!!";
 
     // This method use to encrypt to string
-    public static byte[] encrypt(byte[] input, byte[] iv)
+    public static byte[] encrypt(byte[] input, byte[] iv, boolean exception)
     {
         try {
             IvParameterSpec ivspec
@@ -53,13 +53,15 @@ public class AnamorphicMessagingHelper {
             return cipher.doFinal(input);
         }
         catch (Exception e) {
-            Log.e("MyTest", String.format("Error while encrypting: %s", e.toString()));
+            if (exception) {
+                Log.e("MyTest", String.format("Error while encrypting: %s", e.toString()));
+            }
         }
         return null;
     }
 
     // This method use to decrypt to string
-    public static byte[] decrypt(byte[] strToDecrypt, byte[] iv)
+    public static byte[] decrypt(byte[] strToDecrypt, byte[] iv, boolean usePadding, boolean exception)
     {
         try {
             // Create IvParameterSpec object and assign with
@@ -81,16 +83,34 @@ public class AnamorphicMessagingHelper {
             SecretKeySpec secretKey = new SecretKeySpec(
                     tmp.getEncoded(), "AES");
 
+            String transformation = usePadding ? "AES/CBC/PKCS5PADDING" : "AES/CBC/NoPadding";
+
             Cipher cipher = Cipher.getInstance(
-                    "AES/CBC/PKCS5PADDING");
+                    transformation);
             cipher.init(Cipher.DECRYPT_MODE, secretKey,
                     ivspec);
             // Return decrypted string
             return cipher.doFinal(strToDecrypt);
         }
         catch (Exception e) {
-            Log.e("MyTest", String.format("Error while decrypting: %s", e.toString()));
+            if (exception) {
+                Log.e("MyTest", String.format("Error while decrypting: %s", e.toString()));
+            }
         }
         return null;
+    }
+
+    /**
+     * Try to decrypt with and without padding
+     * @param b
+     * @param iv
+     * @return
+     */
+    public static byte[] tryDecrypt(byte[] b, byte[] iv) {
+        byte[] arr = decrypt(b, iv, true, true);
+        if (arr == null) {
+            arr = decrypt(b, iv, false, true);
+        }
+        return arr;
     }
 }
