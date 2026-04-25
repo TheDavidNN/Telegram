@@ -923,6 +923,7 @@ public class SecretChatHelper extends BaseController {
                         chat.key_create_date = getConnectionsManager().getCurrentTime();
                     }
                     chat.key_use_count_out++;
+                    Log.d("MyTest", String.format("chat.key_use_count_out: %d", chat.key_use_count_out));
                     if ((chat.key_use_count_out >= 100 || chat.key_create_date < getConnectionsManager().getCurrentTime() - 60 * 60 * 24 * 7) && chat.exchange_id == 0 && chat.future_key_fingerprint == 0) {
                         requestNewSecretChatKey(chat);
                     }
@@ -939,7 +940,7 @@ public class SecretChatHelper extends BaseController {
                     FileLog.d(req + " send message with in_seq = " + layer.in_seq_no + " out_seq = " + layer.out_seq_no);
                 }
 
-                Log.e("MyTest", String.format(
+                Log.d("MyTest", String.format(
                         "Sending!\nlayer.out_seq_no: %d",
                         layer.out_seq_no
                 ));

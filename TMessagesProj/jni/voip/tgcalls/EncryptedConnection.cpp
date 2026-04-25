@@ -1,3 +1,4 @@
+#include <android/log.h>
 #include "EncryptedConnection.h"
 
 #include "CryptoHelper.h"
@@ -357,6 +358,7 @@ void EncryptedConnection::appendAdditionalMessages(rtc::CopyOnWriteBuffer &buffe
 
 auto EncryptedConnection::encryptPrepared(const rtc::CopyOnWriteBuffer &buffer)
 -> EncryptedPacket {
+    __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "EncryptedConnection.encryptPrepared()");
     auto result = EncryptedPacket();
     result.counter = CounterFromSeq(ReadSeq(buffer.data()));
     result.bytes.resize(16 + buffer.size());

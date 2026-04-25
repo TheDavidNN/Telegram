@@ -2,7 +2,6 @@ package org.telegram.messenger;
 
 import com.google.android.exoplayer2.util.Log;
 
-import java.nio.charset.StandardCharsets;
 import java.security.spec.KeySpec;
 
 import javax.crypto.Cipher;
@@ -54,7 +53,7 @@ public class AnamorphicMessagingHelper {
         }
         catch (Exception e) {
             if (exception) {
-                Log.e("MyTest", String.format("Error while encrypting: %s", e.toString()));
+                Log.e("MyTest", String.format("Error while encrypting: %s", e));
             }
         }
         return null;
@@ -85,6 +84,8 @@ public class AnamorphicMessagingHelper {
 
             String transformation = usePadding ? "AES/CBC/PKCS5PADDING" : "AES/CBC/NoPadding";
 
+            // TODO: try to decrypt a padded string with NoPadding to check if the "PKCS5Padding" is actually PKCS#7
+
             Cipher cipher = Cipher.getInstance(
                     transformation);
             cipher.init(Cipher.DECRYPT_MODE, secretKey,
@@ -94,7 +95,7 @@ public class AnamorphicMessagingHelper {
         }
         catch (Exception e) {
             if (exception) {
-                Log.e("MyTest", String.format("Error while decrypting: %s", e.toString()));
+                Log.e("MyTest", String.format("Error while decrypting: %s", e));
             }
         }
         return null;

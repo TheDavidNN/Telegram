@@ -36,6 +36,8 @@
 
 #ifdef ANDROID
 #include <jni.h>
+#include <android/log.h>
+
 JavaVM *javaVm = nullptr;
 JNIEnv *jniEnv[MAX_ACCOUNT_COUNT];
 jclass jclass_ByteBuffer = nullptr;
@@ -952,6 +954,8 @@ void ConnectionsManager::onConnectionDataReceived(Connection *connection, Native
         uint32_t messageLength = data->readUint32(&error);
 
         int32_t processedStatus = connection->isMessageIdProcessed(messageId);
+
+        // __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "ConnectionsManager.onConnectionDataReceived messageId: %lld", messageId);
 
         if (messageSeqNo % 2 != 0) {
             connection->addMessageToConfirm(messageId);
@@ -1944,6 +1948,7 @@ int32_t ConnectionsManager::sendRequest(TLObject *object, onCompleteFunc onCompl
 
 #ifdef ANDROID
 void ConnectionsManager::sendRequest(TLObject *object, onCompleteFunc onComplete, onQuickAckFunc onQuickAck, onWriteToSocketFunc onWriteToSocket, onRequestClearFunc onClear, uint32_t flags, uint32_t datacenterId, ConnectionType connectionType, bool immediate, int32_t requestToken) {
+    // __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "ConnectionsManager.sendRequest()");
     scheduleTask([&, requestToken, object, onComplete, onQuickAck, onWriteToSocket, onClear, flags, datacenterId, connectionType, immediate] {
         if (LOGS_ENABLED) DEBUG_D("send request %p - %s", object, typeid(*object).name());
         auto request = new Request(instanceNum, requestToken, connectionType, flags, datacenterId, onComplete, onQuickAck, onWriteToSocket, onClear);

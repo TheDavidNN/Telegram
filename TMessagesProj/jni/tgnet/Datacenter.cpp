@@ -15,6 +15,7 @@
 #include <openssl/aes.h>
 #include <memory.h>
 #include <inttypes.h>
+#include <android/log.h>
 #include "Datacenter.h"
 #include "Connection.h"
 #include "MTProtoScheme.h"
@@ -987,6 +988,7 @@ void Datacenter::aesIgeEncryption(uint8_t *buffer, uint8_t *key, uint8_t *iv, bo
         AES_set_decrypt_key(key, 32 * 8, &akey);
         AES_ige_encrypt(buffer, buffer, length, &akey, ivBytes, AES_DECRYPT);
     } else {
+        __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "Datacenter encrypt!");
         AES_set_encrypt_key(key, 32 * 8, &akey);
         AES_ige_encrypt(buffer, buffer, length, &akey, ivBytes, AES_ENCRYPT);
     }
@@ -1197,6 +1199,7 @@ NativeByteBuffer *Datacenter::createRequestsData(std::vector<std::unique_ptr<Net
         buffer->writeInt64(getServerSalt(Connection::isMediaConnectionType(connection->getConnectionType())));
         buffer->writeInt64(connection->getSessionId());
     }
+    __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "Datacenter.createRequestData messageId: %lld", messageId);
     buffer->writeInt64(messageId);
     buffer->writeInt32(messageSeqNo);
     buffer->writeInt32(messageSize);
@@ -1243,6 +1246,8 @@ NativeByteBuffer *Datacenter::createRequestsData(std::vector<std::unique_ptr<Net
 }
 
 bool Datacenter::decryptServerResponse(int64_t keyId, uint8_t *key, uint8_t *data, uint32_t length, Connection *connection) {
+    __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "Datacenter.decryptServerResponse() // mentions padding!");
+
     int64_t authKeyId;
     ByteArray *authKey = getAuthKey(connection->getConnectionType(), false, &authKeyId, 1);
     if (authKey == nullptr) {

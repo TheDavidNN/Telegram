@@ -2,10 +2,12 @@
 
 #include <cstring>
 #include <limits.h>
+#include <android/log.h>
 
 namespace tgcalls {
 
 AesKeyIv PrepareAesKeyIv(const uint8_t *key, const uint8_t *msgKey, int x) {
+    __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "CryptoHelper.PrepareAesKeyIv()");
 	auto result = AesKeyIv();
 
 	const auto sha256a = ConcatSHA256(

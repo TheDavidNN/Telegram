@@ -6998,6 +6998,9 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     protected void performSendMessageRequest(final TLObject req, final MessageObject msgObj, final String originalPath, DelayedMessage parentMessage, boolean check, DelayedMessage delayedMessage, Object parentObject, HashMap<String, String> params, boolean scheduled) {
+        Log.d("MyTest", String.format(
+                "performSendMessageRequest(%s)", req.getClass()
+        ));
         if (!(req instanceof TLRPC.TL_messages_editMessage)) {
             if (check) {
                 DelayedMessage maxDelayedMessage = findMaxDelayedMessageForMessageId(msgObj.getId(), msgObj.getDialogId());
@@ -7006,6 +7009,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     if (parentMessage != null && parentMessage.requests != null) {
                         maxDelayedMessage.requests.addAll(parentMessage.requests);
                     }
+                    Log.d("MyTest", "Return 1");
                     return;
                 }
             }
@@ -7013,9 +7017,11 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         final TLRPC.Message newMsgObj = msgObj.messageOwner;
         putToSendingMessages(newMsgObj, scheduled);
         if (!StarsController.getInstance(currentAccount).beforeSendingFinalRequest(req, msgObj, () -> performSendMessageRequest(req, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled))) {
+            Log.d("MyTest", "Return 2");
             return;
         }
         if (!BotForumHelper.getInstance(currentAccount).beforeSendingFinalRequest(req, msgObj, () -> performSendMessageRequest(req, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled))) {
+            Log.d("MyTest", "Return 3");
             return;
         }
         newMsgObj.reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
@@ -7023,10 +7029,12 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 if (FileRefController.isFileRefErrorCover(error.text)) {
                     if (removeCoverFromRequest(req)) {
                         performSendMessageRequest(req, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled);
+                        Log.d("MyTest", "Return 4");
                         return;
                     }
                 } else if (parentObject != null) {
                     getFileRefController().requestReference(parentObject, req, msgObj, originalPath, parentMessage, check, delayedMessage, scheduled);
+                    Log.d("MyTest", "Return 5");
                     return;
                 } else if (delayedMessage != null) {
                     AndroidUtilities.runOnUIThread(() -> {
@@ -7049,6 +7057,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         delayedMessage.performMediaUpload = true;
                         performSendDelayedMessage(delayedMessage);
                     });
+                    Log.d("MyTest", "Return 6");
                     return;
                 }
             }
@@ -7064,6 +7073,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             performSendMessageRequest(r, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled);
                         }
                     });
+                    Log.d("MyTest", "Return 7");
                     return;
                 } else if ("BALANCE_TOO_LOW".equalsIgnoreCase(error.text)) {
                     final TLRPC.TL_inputMediaStakeDice media = (TLRPC.TL_inputMediaStakeDice) ((TLRPC.TL_messages_sendMedia) req).media;
@@ -7081,6 +7091,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             arrayList.add(msgObj);
                             cancelSendingMessage(arrayList);
                         });
+                        Log.d("MyTest", "Return 8");
                         return;
                     }
                 }
@@ -7133,17 +7144,20 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     }
                 });
             } else {
+                Log.d("MyTest", "else-statement, go!");
                 AndroidUtilities.runOnUIThread(() -> {
 
                     boolean currentSchedule = scheduled;
                     boolean isSentError = false;
                     if (error == null) {
+                        Log.d("MyTest", "error == null");
                         final int oldId = newMsgObj.id;
                         final ArrayList<TLRPC.Message> sentMessages = new ArrayList<>();
                         final String attachPath = newMsgObj.attachPath;
                         final int existFlags;
                         boolean scheduledOnline = newMsgObj.date == 0x7FFFFFFE;
                         if (response instanceof TLRPC.TL_updateShortSentMessage) {
+                            Log.d("MyTest", "TLRPC.TL_updateShortSentMessage");
                             final TLRPC.TL_updateShortSentMessage res = (TLRPC.TL_updateShortSentMessage) response;
                             updateMediaPaths(msgObj, null, res.id, null, false);
                             existFlags = msgObj.getMediaExistanceFlags();
@@ -7178,6 +7192,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             Utilities.stageQueue.postRunnable(() -> getMessagesController().processNewDifferenceParams(-1, res.pts, res.date, res.pts_count));
                             sentMessages.add(newMsgObj);
                         } else if (response instanceof TLRPC.Updates) {
+                            Log.d("MyTest", "TLRPC.Updates");
                             final TLRPC.Updates updates = (TLRPC.Updates) response;
                             ArrayList<TLRPC.Update> updatesArr = ((TLRPC.Updates) response).updates;
                             TLRPC.Message message = null;
@@ -7361,10 +7376,12 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             }
                         }
                     } else {
+                        Log.d("MyTest", "error != null");
                         AlertsCreator.processError(currentAccount, error, null, req);
                         isSentError = true;
                     }
                     if (isSentError) {
+                        Log.d("MyTest", "isSentError");
                         getMessagesStorage().markMessageAsSendError(newMsgObj, scheduled ? 1 : 0);
                         newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SEND_ERROR;
                         if (error != null && error.text != null && error.text.startsWith("ALLOW_PAYMENT_REQUIRED_")) {
