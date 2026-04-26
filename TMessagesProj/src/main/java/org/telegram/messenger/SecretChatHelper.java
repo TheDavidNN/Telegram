@@ -17,7 +17,7 @@ import android.util.SparseArray;
 import android.util.SparseIntArray;
 
 import androidx.annotation.NonNull;
-import org.jetbrains.annotations.NotNull;
+
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.messenger.support.LongSparseIntArray;
 import org.telegram.tgnet.ConnectionsManager;
@@ -32,7 +32,6 @@ import org.telegram.ui.ActionBar.AlertDialog;
 
 import java.io.File;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -692,130 +691,39 @@ public class SecretChatHelper extends BaseController {
         }
     }
 
-    private byte[] prepend(byte b, byte[] arr) {
-        byte[] tmp = new byte[arr.length + 1];
+    private int getPaddingLength(int len) {
+        int extraLen = len % 16 != 0 ? 16 - len % 16 : 0; // { 0, 4, 8, 12}
 
-        tmp[0] = b;
-        System.arraycopy(arr, 0, tmp, 1, arr.length);
+        /*
+        (1-3)   + n * 16 bytes: 4
+        (4-7)   + n * 16 bytes: 0
+        (8-11)  + n * 16 bytes: 12
+        (12-15) + n * 16 bytes: 8
+        */
 
-        return tmp;
-    }
+        extraLen += (2 + nextPaddingRand) * 16; // adds element in { 32, 48, 64}
+        nextPaddingRand = Utilities.random.nextInt(3);
 
-    private byte[] concat(byte[] a, byte[] b) {
-        byte[] arr = new byte[a.length + b.length];
+        Log.d("MyTest", String.format("extraLen (padding length): %d", extraLen));
 
-        System.arraycopy(a, 0, arr, 0, a.length);
-        System.arraycopy(b, 0, arr, a.length, b.length);
-
-        return arr;
-    }
-
-    @NonNull
-    private byte[] createCiphertext(@NotNull String aMsg, byte @NotNull [] iv, int maxCiphertextSize) {
-        byte[] plaintext = aMsg.getBytes(StandardCharsets.UTF_8);
-
-        byte blocksNeeded;
-
-        if (plaintext.length <= 14) {
-            /*
-            in the first block, there is room for:
-            - 1 byte specifying the number of blocks
-            - max 14 bytes of message data
-            - min 1 padding byte
-             */
-            blocksNeeded = 1;
-        } else if (plaintext.length <= 29) {
-            /*
-            in the second block, there is room for:
-            - max 15 bytes of message data (plus 14 from the first block)
-            - min 1 padding byte
-             */
-            blocksNeeded = 2;
+        int minNextBytes;
+        if (nextPaddingRand == 0) {
+            minNextBytes = 14;
+        } else if (nextPaddingRand == 1) {
+            minNextBytes = 29;
         } else {
-            int remainingBytes = plaintext.length - 29;
-
-            // amount of padding needed, excluding the mandatory 2 bytes
-            int extraPaddingNeeded = remainingBytes % 16 == 0 ? 0 : 16 - (remainingBytes % 16);
-
-            // how many blocks needed after the first two
-            byte extraBlocksNeeded = (byte) ((remainingBytes + extraPaddingNeeded) / 16);
-
-            blocksNeeded = (byte) (2 + extraBlocksNeeded);
+            minNextBytes = 45;
         }
 
-        int bytesNeededForCiphertext = blocksNeeded * 16;
-
-        if (bytesNeededForCiphertext > maxCiphertextSize) {
-            Log.e("MyTest", String.format(
-                    "blocksNeeded: %d\nbytesNeededForCiphertext: %d\nmaxCiphertextSize: %d",
-                    blocksNeeded,
-                    bytesNeededForCiphertext,
-                    maxCiphertextSize
-            ));
-            throw new IllegalArgumentException("aMsg is too long to be encrypted!");
-        }
-
-        plaintext = prepend(blocksNeeded, plaintext);
-
-        byte[] ciphertext = null;
-
-        if (plaintext.length < 16) {
-            ciphertext = AnamorphicMessagingHelper.encrypt(plaintext, iv, true);
-            if (ciphertext == null) {
-                Log.e("MyTest", "Failed to encrypt single block!");
-            }
-        } else {
-            byte[] firstPlaintextBlock = Arrays.copyOfRange(plaintext, 0, 15); // leaves one byte for padding
-            byte[] firstCiphertextBlock = AnamorphicMessagingHelper.encrypt(firstPlaintextBlock, iv, true);
-
-            byte[] remainingPlaintext = Arrays.copyOfRange(plaintext, 15, plaintext.length);
-            byte[] remainingCiphertext = AnamorphicMessagingHelper.encrypt(remainingPlaintext, iv, true);
-
-            if (firstCiphertextBlock != null && remainingCiphertext != null) {
-                ciphertext = concat(firstCiphertextBlock, remainingCiphertext);
-
-                // test
-                /*
-                {
-                    byte[] firstBlockDecrypted = AnamorphicMessagingHelper.decrypt(firstCiphertextBlock, iv, true, true);
-                    String firstBlockString = "";
-                    if(firstBlockDecrypted != null){
-                        firstBlockString = new String(Arrays.copyOfRange(firstBlockDecrypted, 1, firstBlockDecrypted.length));
-                    }
-
-                    byte[] remainingDecrypted = AnamorphicMessagingHelper.decrypt(remainingCiphertext, iv, true, true);
-                    String remainingString = "";
-                    if (remainingDecrypted != null) {
-                        remainingString = new String(Arrays.copyOfRange(remainingDecrypted, 1, remainingDecrypted.length));
-                    }
-
-                    Log.d("MyTest", String.format(
-                            "Decrypt own encryption!\nfirstBlockString, %s\nremainingString: %s",
-                            firstBlockString,
-                            remainingString
-                    ));
-                }
-                */
-            } else {
-                Log.e("MyTest", "Failed to encrypt multiple blocks!");
-            }
-        }
-
-        // the length check is currently redundant, since length of the anamorphic message is also
-        // checked by the regex matching for anamorphic messages
-
-        if (ciphertext == null) {
-            throw new RuntimeException("ciphertext is null");
-        }
-
+        int maxNextBytes = 29 + (nextPaddingRand * 16);
         Log.d("MyTest", String.format(
-                "Encrypting!!\naMsg.getBytes(StandardCharsets.UTF_8).length: %d\nblocksNeeded: %d\nciphertext.length: %d",
-                aMsg.getBytes(StandardCharsets.UTF_8).length,
-                blocksNeeded,
-                ciphertext.length
+                "Create next random!\nnextPaddingRand: %d\nNext aMsg can contain min. %d bytes (%d if msg is correct length)",
+                nextPaddingRand,
+                minNextBytes,
+                maxNextBytes
         ));
 
-        return ciphertext;
+        return extraLen;
     }
 
     protected void performSendEncryptedRequest(TLRPC.DecryptedMessage req, TLRPC.Message newMsgObj, TLRPC.EncryptedChat chat, TLRPC.InputEncryptedFile encryptedFile, String originalPath, MessageObject newMsg) {
@@ -865,45 +773,39 @@ public class SecretChatHelper extends BaseController {
                 int myLayer = Math.max(46, AndroidUtilities.getMyLayerVersion(chat.layer));
                 layer.layer = Math.min(myLayer, Math.max(46, AndroidUtilities.getPeerLayerVersion(chat.layer)));
                 layer.message = req;
-
                 layer.random_bytes = new byte[15];
 
+                int layerLen = layer.getObjectSize();
+                int len = layerLen + 4;
+                int extraLen = getPaddingLength(len);
 
-                byte[] iv = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-                // TODO: use random IV
-                // Utilities.random.nextBytes(iv);
+                AnamorphicMessage anamorphicMessage = null;
+
 
                 if (aMsg != null) {
+                    if (AnamorphicMessagingHelper.validAMsg(aMsg, extraLen - 1)) { // minus 1 to leave space for 1 byte of the IV
+                        try {
+                            anamorphicMessage = AnamorphicMessagingHelper.encrypt(aMsg, true);
+                        } catch (Exception e) {
+                            Log.d("MyTest", "Failed to encrypt aMsg");
+                        }
+                    } else {
+                        // invalid covert message
+                        Log.d("MyTest", "aMsg is invalid");
+                    }
+                }
+
+                if (anamorphicMessage != null) {
                     // use the first 15 bytes of the iv as random bytes
-                    layer.random_bytes = Arrays.copyOfRange(iv, 0, 15);
+                    layer.random_bytes = Arrays.copyOfRange(anamorphicMessage.iv, 0, 15);
                 } else {
+                    // use random bytes
                     Utilities.random.nextBytes(layer.random_bytes);
                 }
 
                 toEncryptObject = layer;
 
                 Log.d("MyTest", String.format("layer.random_bytes.length: %d", layer.random_bytes.length));
-
-                if (layer.message.random_bytes != null) {
-                    Log.d("MyTest", String.format("layer.message.random_bytes.length: %d",
-                            layer.message.random_bytes.length));
-                } else {
-                    Log.d("MyTest", "layer.message.random_bytes is null!");
-                }
-
-                if (req.message != null) {
-                    Log.d("MyTest", String.format("req.message: %s",
-                            req.message));
-                } else {
-                    Log.d("MyTest", "req.message is null!");
-                }
-
-                if (newMsgObj.message != null) {
-                    Log.d("MyTest", String.format("newMsgObj.message: %s",
-                            newMsgObj.message));
-                } else {
-                    Log.d("MyTest", "newMsgObj.message is null!");
-                }
 
                 if (chat.seq_in == 0 && chat.seq_out == 0) {
                     if (chat.admin_id == getUserConfig().getClientUserId()) {
@@ -945,118 +847,41 @@ public class SecretChatHelper extends BaseController {
                         layer.out_seq_no
                 ));
 
-                int len = toEncryptObject.getObjectSize();
+                // int len = toEncryptObject.getObjectSize();
                 Log.d("MyTest", String.format("toEncryptObject.getObjectSize(): %d", toEncryptObject.getObjectSize()));
-                NativeByteBuffer toEncrypt = new NativeByteBuffer(4 + len);
-                toEncrypt.writeInt32(len);
+                NativeByteBuffer toEncrypt = new NativeByteBuffer(4 + layerLen);
+                toEncrypt.writeInt32(layerLen);
                 toEncryptObject.serializeToStream(toEncrypt);
 
-                len = toEncrypt.length();
-                int extraLen = len % 16 != 0 ? 16 - len % 16 : 0; // { 0, 4, 8, 12}
-
-                // APPARENTLY THE LOG BELOW INTRODUCED A BUG???
-                // UNCOMMENT AT OWN RISK
-                // TODO: Check why the code below causes bug. Does it throw an error? If so, it is probably the call to getBytes()
-                /*
-                Log.d("MyTest",
-                        String.format("len: %d\nmessage.getBytes(\"UTF-8\").length: %d\nextraLen: %d",
-                                len,
-                                req.message.getBytes("UTF-8").length,
-                                extraLen
-                        )
-                );
-                */
-                /*
-                    (1-3)   + n * 16 bytes: 4
-                    (4-7)   + n * 16 bytes: 0
-                    (8-11)  + n * 16 bytes: 12
-                    (12-15) + n * 16 bytes: 8
-                */
-
-                extraLen += (2 + nextPaddingRand) * 16; // adds element in { 32, 48, 64}
-                nextPaddingRand = Utilities.random.nextInt(3);
-
-                Log.d("MyTest", String.format("extraLen (padding length): %d", extraLen));
-
-                int minNextBytes;
-                if (nextPaddingRand == 0) {
-                    minNextBytes = 14;
-                } else if (nextPaddingRand == 1) {
-                    minNextBytes = 29;
-                } else {
-                    minNextBytes = 45;
-                }
-
-                int maxNextBytes = 29 + (nextPaddingRand * 16);
-                Log.d("MyTest", String.format(
-                        "Create next random!\nnextPaddingRand: %d\nNext aMsg can contain min. %d bytes (%d if msg is correct length)",
-                        nextPaddingRand,
-                        minNextBytes,
-                        maxNextBytes
-                ));
 
                 NativeByteBuffer dataForEncryption = new NativeByteBuffer(len + extraLen);
                 toEncrypt.position(0);
                 dataForEncryption.writeBytes(toEncrypt);
 
-                if (aMsg == null) {
+                if (anamorphicMessage == null) {
                     Log.d("MyTest", "Send normal message!");
                     addRandomPadding(dataForEncryption, extraLen);
-                } else
-                {
-                    byte[] ciphertext = null;
-                    try {
-                        ciphertext = createCiphertext(aMsg, iv, extraLen - 1);
-                    } catch (Exception e) {
-                        Log.d("MyTest", e.toString());
-                    }
-
-                    if (ciphertext != null) {
-                        int paddingNeeded = extraLen - 1 - ciphertext.length; // minus IV byte and ciphertext
-                        byte[] padding = new byte[paddingNeeded];
-                        Utilities.random.nextBytes(padding);
+                } else {
+                    int paddingNeeded = extraLen - 1 - anamorphicMessage.formattedCiphertext.length; // minus IV byte and ciphertext
+                    byte[] padding = new byte[paddingNeeded];
+                    Utilities.random.nextBytes(padding);
 
                         /*
                             remember, NativeByteBuffer.writeBytes(byte[] b) does not prepend b.length!
                             writing more data than there is space for in the buffer causes an exception to be thrown
                         */
-                        dataForEncryption.writeByte(iv[15]);
-                        // Log.d("MyTest", String.format("Before adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
-                        dataForEncryption.writeBytes(ciphertext);
-                        // Log.d("MyTest", String.format("Between adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
-                        dataForEncryption.writeBytes(padding);
-                        // Log.d("MyTest", String.format("After adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
+                    dataForEncryption.writeByte(anamorphicMessage.iv[15]);
+                    // Log.d("MyTest", String.format("Before adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
+                    dataForEncryption.writeBytes(anamorphicMessage.formattedCiphertext);
+                    // Log.d("MyTest", String.format("Between adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
+                    dataForEncryption.writeBytes(padding);
+                    // Log.d("MyTest", String.format("After adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
 
-                        Log.d("MyTest", String.format(
-                                "Send anamorphic!\nciphertext: %s\niv: %s",
-                                Arrays.toString(ciphertext),
-                                Arrays.toString(iv)
-                        ));
-
-
-                        // TEST
-                        /*
-                        {
-                            byte[] firstBlock = Arrays.copyOfRange(ciphertext, 0, 16);
-                            byte[] plaintext = AnamorphicMessagingHelper.decrypt(firstBlock, iv);
-                            if (plaintext != null) {
-                                Log.d("MyTest", String.format(
-                                        "TEST\nfirstBlock: %s\niv: %s\naMsg: %s",
-                                        Arrays.toString(firstBlock),
-                                        Arrays.toString(iv),
-                                        new String(Arrays.copyOfRange(plaintext, 1, 16))
-                                ));
-                            } else {
-                                Log.e("MyTest", "Could not decrypt own first block???");
-                            }
-                        }
-                         */
-
-                    } else {
-                        Log.e("MyTest", "Failed to send anamorphic!");
-
-                        addRandomPadding(dataForEncryption, extraLen);
-                    }
+                    Log.d("MyTest", String.format(
+                            "Send anamorphic!\nciphertext: %s\niv: %s",
+                            Arrays.toString(anamorphicMessage.formattedCiphertext),
+                            Arrays.toString(anamorphicMessage.iv)
+                    ));
                 }
 
                 /*
@@ -1208,7 +1033,7 @@ public class SecretChatHelper extends BaseController {
         });
     }
 
-    private void applyPeerLayer(TLRPC.EncryptedChat chat, int newPeerLayer) {
+    private void applyPeerLayer(@NonNull TLRPC.EncryptedChat chat, int newPeerLayer) {
         int currentPeerLayer = AndroidUtilities.getPeerLayerVersion(chat.layer);
         if (newPeerLayer <= currentPeerLayer) {
             return;
@@ -2106,60 +1931,14 @@ public class SecretChatHelper extends BaseController {
                     TLRPC.TL_decryptedMessageLayer layer = (TLRPC.TL_decryptedMessageLayer) object;
 
                     printLayer(layer);
-
-                    byte[] iv = new byte[16];
-                    System.arraycopy(layer.random_bytes, 0, iv, 0, 15);
-                    iv[15] = padding[0];
-
-                    // first ciphertext block
-                    byte[] firstBlockEncrypted = Arrays.copyOfRange(padding, 1, 17);
-
-                    Log.d("MyTest", String.format(
-                            "Start decryption!\nfirst ciphertext block: %s\niv: %s",
-                            Arrays.toString(firstBlockEncrypted),
-                            Arrays.toString(iv)
-                    ));
-
-                    byte[] firstBlockDecrypted = AnamorphicMessagingHelper.decrypt(firstBlockEncrypted, iv, true, true); // tryDecrypt(firstBlockEncrypted, iv);
-
+                    String aMsg = AnamorphicMessagingHelper.tryDecrypt(layer.random_bytes, padding);
 
                     // Log.d("MyTest", String.format("IV: %s", Arrays.toString(iv_test)));
                     // Log.d("MyTest", String.format("Ciphertext: %s", Arrays.toString(ciphertext_test)));
                     // Log.d("MyTest", String.format("aMsg: %s", aMsg));
 
-                    if (firstBlockDecrypted != null) {
-                        Log.d("MyTest", "First block decrypted successfully");
-
-                        // get the number of blocks encrypted
-                        byte n = firstBlockDecrypted[0];
-                        byte[] firstBlockSerializedString = Arrays.copyOfRange(firstBlockDecrypted, 1, firstBlockDecrypted.length);
-                        String firstBlockString = new String(firstBlockSerializedString);
-                        Log.d("MyTest", "A");
-
-                        String remainingBlocksString = "";
-
-                        if (n > 1) {
-                            Log.d("MyTest", "B");
-
-                            int length = (n-1) * 16;
-                            byte[] remainingCiphertext = Arrays.copyOfRange(padding, 17, 17 + length);
-
-                            Log.d("MyTest", "C");
-
-                            // TODO: check if we can use the first block as IV for the second, so we do not need to derypt the first block twice
-                            byte[] remainingPlaintext = AnamorphicMessagingHelper.decrypt(remainingCiphertext, iv, true, true);
-
-                            Log.d("MyTest", "D");
-
-                            remainingBlocksString = new String(remainingPlaintext);
-                        }
-
-                        String aMsg = firstBlockString + remainingBlocksString;
-                        Log.d("MyTest", "F");
-
+                    if (aMsg != null) {
                         layer.message.message = String.format("%s \n\naMsg:\n%s", layer.message.message, aMsg);
-                    } else {
-                        Log.d("MyTest", "First block not decrypted successfully");
                     }
 
                     Log.d("MyTest", String.format(
