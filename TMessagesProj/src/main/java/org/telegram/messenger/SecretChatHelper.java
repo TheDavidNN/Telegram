@@ -609,9 +609,7 @@ public class SecretChatHelper extends BaseController {
     private void addRandomPadding(NativeByteBuffer buffer, int n) {
         byte[] b = new byte[n];
         Utilities.random.nextBytes(b);
-        // Log.d("MyTest", String.format("Before adding %d: %d", n, buffer.length()));
         buffer.writeBytes(b);
-        // Log.d("MyTest", String.format("After adding %d: %d", n, buffer.length()));
     }
 
     /**
@@ -884,15 +882,6 @@ public class SecretChatHelper extends BaseController {
                     ));
                 }
 
-                /*
-                NativeByteBuffer testBuffer = new NativeByteBuffer(8);
-                byte[] testArr = {0, 1, 2};
-                byte testByte = 3;
-                testBuffer.writeBytes(testArr);
-                testBuffer.writeByte(testByte);
-                printBuffer("testBuffer", testBuffer);
-                */
-
                 byte[] messageKey = new byte[16];
                 byte[] messageKeyFull;
                 boolean incoming = chat.admin_id != getUserConfig().getClientUserId();
@@ -913,22 +902,8 @@ public class SecretChatHelper extends BaseController {
                 data.writeBytes(dataForEncryption);
                 dataForEncryption.reuse();
 
-
-                /*
-                int dataLength = data.length();
-                byte[] a = new byte[dataLength];
-                */
-                // printBuffer("encrypted message sent", data);
-
                 data.position(0);
-                /*
-                data.readBytes(a, 0, dataLength, false);
 
-                String arrayString = String.format("is.buffer (serialization): %d %s", a.length, Arrays.toString(a));
-                Log.d("MyTest", arrayString);
-
-                data.position(0);
-                */
                 TLObject reqToSend;
 
                 if (encryptedFile == null) {
