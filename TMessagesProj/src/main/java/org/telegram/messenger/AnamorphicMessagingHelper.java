@@ -120,7 +120,7 @@ public class AnamorphicMessagingHelper {
         }
     }
 
-    public static byte[] aesCbcDec(byte[] strToDecrypt, byte[] iv, boolean usePadding) throws GeneralSecurityException {
+    private static byte[] aesCbcDec(byte[] strToDecrypt, byte[] iv, boolean usePadding) throws GeneralSecurityException {
         try {
             // Create IvParameterSpec object and assign with
             // constructor
@@ -218,6 +218,17 @@ public class AnamorphicMessagingHelper {
             android.util.Log.d("MyTest", "B");
 
             int numRemainingCiphertextBytes = (n - 1) * BLOCK_SIZE;
+
+            // if the number of bytes needed for the message is greater than the number given, return null
+            // we minus one from the length to compensate for the one byte of padding used for the IV
+            if (numRemainingCiphertextBytes + 16 > padding.length - 1) {
+                Log.e("MyTest", String.format(
+                        "First block decrypted successfully. It specified a total of %d blocks, but the padding only contains %d bytes usable for ciphertext", padding.length-1,
+                        n)
+                );
+                return null;
+            }
+
             byte[] remainingCiphertext = Arrays.copyOfRange(padding, 17, 17 + numRemainingCiphertextBytes);
 
             android.util.Log.d("MyTest", "C");
@@ -239,7 +250,8 @@ public class AnamorphicMessagingHelper {
 
             return firstBlockString + remainingBlocksString;
         } else {
-            throw new RuntimeException(String.format("Number of ciphertext blocks is negative! Expected positive integer, got %d", n));
+            Log.e("MyTest", String.format("Expected positive number of blocks, received %d", n));
+            return null;
         }
     }
 }
