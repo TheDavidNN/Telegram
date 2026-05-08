@@ -76,6 +76,8 @@ public class SecretChatHelper extends BaseController {
     public static int CURRENT_SECRET_CHAT_LAYER = 151;
 
     public static int nextPaddingRand = Utilities.random.nextInt(3);
+    private static final Pattern ANAMORPHIC_MSG_PATTERN = Pattern.compile("^.+\\(.+\\)$");
+
 
     private ArrayList<Integer> sendingNotifyLayer = new ArrayList<>();
     private SparseArray<ArrayList<TL_decryptedMessageHolder>> secretHolesQueue = new SparseArray<>();
@@ -731,40 +733,42 @@ public class SecretChatHelper extends BaseController {
         }
         Log.d("MyTest", "performSendEncryptedRequest 2");
 
-        boolean enableAnamorphicMessages = true;
-        boolean isTextMessage = req instanceof TLRPC.TL_decryptedMessage;
+        // PerformanceTestNormal.test(req);
+        // PerformanceTestAnamorphic.test(req);
 
-        String msg = req.message;
-
-        /*
-            The allowed size of the anamorphic message partially depends on the length of the
-            non-anamorphic message. The lengths are checked and validated later
-         */
-        String sendAnamorphicPattern = "^.+\\(.+\\)$";
-        String aMsg;
-
-        if (isTextMessage && enableAnamorphicMessages) {
-            if (Pattern.matches(sendAnamorphicPattern, msg)) {
-                String[] split = msg.split("\\(|\\)");
-
-                msg = split[0];
-                aMsg = split[1];
-
-                Log.d("MyTest", String.format("m  : %s", msg));
-                Log.d("MyTest", String.format("m' : %s", aMsg));
-            } else {
-                aMsg = null;
-                Log.d("MyTest", "No match found for anamorphic message!");
-            }
-        } else {
-            aMsg = null;
-        }
-        req.message = msg;
-        newMsgObj.message = msg;
 
         getSendMessagesHelper().putToSendingMessages(newMsgObj, false);
         Utilities.stageQueue.postRunnable(() -> {
             try {
+                boolean enableAnamorphicMessages = true;
+                boolean isTextMessage = req instanceof TLRPC.TL_decryptedMessage;
+
+                String msg = req.message;
+
+                /*
+                The allowed size of the anamorphic message partially depends on the length of the
+                non-anamorphic message. The lengths are checked and validated later
+                */
+                String aMsg;
+
+                if (isTextMessage && enableAnamorphicMessages) {
+                    if (ANAMORPHIC_MSG_PATTERN.matcher(msg).matches()) {
+                        String[] split = msg.split("\\(|\\)");
+
+                        msg = split[0];
+                        aMsg = split[1];
+
+                        Log.d("MyTest", String.format("m  : %s", msg));
+                        Log.d("MyTest", String.format("m' : %s", aMsg));
+                    } else {
+                        aMsg = null;
+                        Log.d("MyTest", "No match found for anamorphic message!");
+                    }
+                } else {
+                    aMsg = null;
+                }
+                req.message = msg;
+
                 TLObject toEncryptObject;
 
                 TLRPC.TL_decryptedMessageLayer layer = new TLRPC.TL_decryptedMessageLayer();
