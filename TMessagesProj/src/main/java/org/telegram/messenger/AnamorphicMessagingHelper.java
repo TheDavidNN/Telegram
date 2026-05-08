@@ -25,9 +25,24 @@ import javax.crypto.spec.SecretKeySpec;
 public class AnamorphicMessagingHelper {
     // Class private variables
     private static final int BLOCK_SIZE = 16;
-    private static final String SECRET_KEY = "my_super_secret_key_ho_ho_ho";
 
-    private static final String SALT = "ssshhhhhhhhhhh!!!!";
+    private static SecretKeySpec secretKey;
+
+    static {
+        try {
+            String SECRET_KEY = "my_super_secret_key_ho_ho_ho";
+            String SALT = "ssshhhhhhhhhhh!!!!";
+
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec spec = new PBEKeySpec(SECRET_KEY.toCharArray(), SALT.getBytes(), 65536, 256);
+            SecretKey tmp = factory.generateSecret(spec);
+            secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
+        } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+            Log.e("MyTest", String.format("Error while encrypting: %s", e));
+            throw new RuntimeException(e);
+        }
+
+    }
 
     /**
      *
@@ -97,13 +112,10 @@ public class AnamorphicMessagingHelper {
             IvParameterSpec ivspec = new IvParameterSpec(iv);
 
             // Create SecretKeyFactory object
-            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
 
             // Create KeySpec object and assign with
             // constructor
-            KeySpec spec = new PBEKeySpec(SECRET_KEY.toCharArray(), SALT.getBytes(), 65536, 256);
-            SecretKey tmp = factory.generateSecret(spec);
-            SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
+
 
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
@@ -131,9 +143,6 @@ public class AnamorphicMessagingHelper {
 
             // Create KeySpec object and assign with
             // constructor
-            KeySpec spec = new PBEKeySpec(SECRET_KEY.toCharArray(), SALT.getBytes(), 65536, 256);
-            SecretKey tmp = factory.generateSecret(spec);
-            SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
 
             String transformation = usePadding ? "AES/CBC/PKCS5PADDING" : "AES/CBC/NoPadding";
 
@@ -223,7 +232,7 @@ public class AnamorphicMessagingHelper {
             // we minus one from the length to compensate for the one byte of padding used for the IV
             if (numRemainingCiphertextBytes + 16 > padding.length - 1) {
                 Log.e("MyTest", String.format(
-                        "First block decrypted successfully. It specified a total of %d blocks, but the padding only contains %d bytes usable for ciphertext", padding.length-1,
+                        "First block decrypted successfully. It specified a total of %d blocks, but the padding only contains %d bytes usable for ciphertext", padding.length - 1,
                         n)
                 );
                 return null;
