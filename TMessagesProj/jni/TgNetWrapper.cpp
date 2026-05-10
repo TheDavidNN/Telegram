@@ -108,7 +108,7 @@ jint getTimeDifference(JNIEnv *env, jclass c, jint instanceNum) {
 }
 
 void sendRequest(JNIEnv *env, jclass c, jint instanceNum, jlong object, jint flags, jint datacenterId, jint connectionType, jboolean immediate, jint token) {
-    __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "TgNetWrapper.sendRequest()");
+    // __android_log_print(ANDROID_LOG_DEBUG, "MyTest", "TgNetWrapper.sendRequest()");
     TL_api_request *request = new TL_api_request();
     request->request = (NativeByteBuffer *) (intptr_t) object;
     ConnectionsManager::getInstance(instanceNum).sendRequest(request, ([instanceNum, token](TLObject *response, TL_error *error, int32_t networkType, int64_t responseTime, int64_t msgId, int32_t dcId) {
