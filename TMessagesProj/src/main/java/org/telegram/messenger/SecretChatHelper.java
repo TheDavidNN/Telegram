@@ -751,6 +751,10 @@ public class SecretChatHelper extends BaseController {
                 */
                 String aMsg;
 
+                if (isTextMessage) {
+                    AnamorphicMessagingHelper.StartClock();
+                }
+
                 if (isTextMessage && enableAnamorphicMessages) {
                     if (ANAMORPHIC_MSG_PATTERN.matcher(msg).matches()) {
                         String[] split = msg.split("\\(|\\)");

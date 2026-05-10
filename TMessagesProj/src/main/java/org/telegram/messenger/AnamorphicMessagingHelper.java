@@ -22,6 +22,7 @@ public class AnamorphicMessagingHelper {
     private static final int BLOCK_SIZE = 16;
 
     private static SecretKeySpec secretKey;
+    private static long timer_start = -1;
 
     static {
         try {
@@ -291,6 +292,21 @@ public class AnamorphicMessagingHelper {
         } else {
             Log.e("MyTest", String.format("Expected positive number of blocks, received %d", n));
             return null;
+        }
+    }
+
+
+    public static void StartClock() {
+        timer_start = System.currentTimeMillis();
+    }
+
+    public static void StopClock() {
+        long timer_stop = System.currentTimeMillis();
+
+        if (timer_start != -1) {
+            long diff = timer_stop - timer_start;
+
+            Log.d("MyTest", String.format("Diff: %d", diff));
         }
     }
 }
