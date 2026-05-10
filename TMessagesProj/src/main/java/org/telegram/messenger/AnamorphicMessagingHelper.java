@@ -4,18 +4,13 @@ import com.google.android.exoplayer2.util.Log;
 
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.util.Arrays;
 
-import javax.annotation.Nonnull;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
@@ -107,6 +102,50 @@ public class AnamorphicMessagingHelper {
         return arr;
     }
 
+    private static byte[] addPadding(byte[] arr) {
+        byte[] res = new byte[arr.length + 16 - (arr.length % 16)];
+
+        byte paddingAmount = (byte) (res.length - arr.length);
+
+        System.arraycopy(arr, 0, res, 0, arr.length);
+        for (int i = arr.length; i < res.length; i++) {
+            res[i] = paddingAmount;
+        }
+
+        return res;
+    }
+
+    /**
+     * Remove PKCS#7 padding from input.
+     *
+     * @param arr
+     * @return Input with PKCS7 padding removed
+     * @throws BadPaddingException if there is no padding, more than 16 bytes of padding, or if there is more padding than there are bytes (invalid last byte)
+     */
+    private static byte[] removePadding(byte[] arr) throws BadPaddingException {
+        byte paddingAmount = arr[arr.length - 1];
+
+        if (paddingAmount <= 0 || paddingAmount > 16) {
+            throw new BadPaddingException("Padding should be 1-16 bytes!");
+        }
+
+        if (paddingAmount > arr.length) {
+            throw new BadPaddingException(
+                    String.format(
+                            "There is more padding that elements!\nAmount of padding specified: %d\nLength of input: %d",
+                            paddingAmount,
+                            arr.length
+                    )
+            );
+        }
+
+        byte[] res = new byte[arr.length - paddingAmount];
+
+        System.arraycopy(arr, 0, res, 0, res.length);
+
+        return res;
+    }
+
     private static byte[] aesCbcEnc(byte[] plaintext, byte[] iv) throws GeneralSecurityException {
         try {
             IvParameterSpec ivspec = new IvParameterSpec(iv);
@@ -117,7 +156,7 @@ public class AnamorphicMessagingHelper {
             // constructor
 
 
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
 
             /*
@@ -125,7 +164,7 @@ public class AnamorphicMessagingHelper {
                 If so, we need a better way to validate the input
             */
 
-            return cipher.doFinal(plaintext);
+            return cipher.doFinal(addPadding(plaintext));
         } catch (Exception e) {
             Log.e("MyTest", String.format("Error while encrypting: %s", e));
             throw e;
@@ -138,20 +177,15 @@ public class AnamorphicMessagingHelper {
             // constructor
             IvParameterSpec ivspec = new IvParameterSpec(iv);
 
-            // Create SecretKeyFactory Object
-            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-
-            // Create KeySpec object and assign with
-            // constructor
-
             String transformation = usePadding ? "AES/CBC/PKCS5PADDING" : "AES/CBC/NoPadding";
 
             // TODO: try to decrypt a padded string with NoPadding to check if the "PKCS5Padding" is actually PKCS#7
 
             Cipher cipher = Cipher.getInstance(transformation);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, ivspec);
+
             // Return decrypted string
-            return cipher.doFinal(strToDecrypt);
+            return removePadding(cipher.doFinal(strToDecrypt));
         } catch (Exception e) {
             Log.e("MyTest", String.format("Error while decrypting: %s", e));
             throw e;
@@ -160,7 +194,8 @@ public class AnamorphicMessagingHelper {
 
     public static AnamorphicMessage encrypt(String input, boolean exception) throws Exception {
         // TODO: use random IV
-        byte[] iv = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+        byte[] iv = new byte[16]; // {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+        Utilities.random.nextBytes(iv);
         byte[] plaintext = input.getBytes(StandardCharsets.UTF_8);
         byte[] formattedCiphertext = null;
 
@@ -177,13 +212,8 @@ public class AnamorphicMessagingHelper {
             byte[] remainingPlaintext = Arrays.copyOfRange(prependedPlaintext, 15, prependedPlaintext.length);
             byte[] remainingCiphertext = aesCbcEnc(remainingPlaintext, iv);
 
-            if (firstCiphertextBlock != null && remainingCiphertext != null) {
-                formattedCiphertext = concat(firstCiphertextBlock, remainingCiphertext);
-            } else if (firstCiphertextBlock == null) {
+            formattedCiphertext = concat(firstCiphertextBlock, remainingCiphertext);
 
-            } else if (remainingCiphertext == null) {
-
-            }
         } else {
             Log.e("MyTest", String.format("Error: numBlocksNeeded should be positive, but it is: %d", numBlocksNeeded));
             if (exception) {
@@ -207,7 +237,7 @@ public class AnamorphicMessagingHelper {
         byte[] firstBlockDecrypted;
 
         try {
-            firstBlockDecrypted = aesCbcDec(firstBlockEncrypted, iv, true);
+            firstBlockDecrypted = aesCbcDec(firstBlockEncrypted, iv, false);
         } catch (GeneralSecurityException e) {
             return null;
         }
@@ -244,7 +274,7 @@ public class AnamorphicMessagingHelper {
             byte[] remainingPlaintext;
 
             try {
-                remainingPlaintext = AnamorphicMessagingHelper.aesCbcDec(remainingCiphertext, iv, true);
+                remainingPlaintext = AnamorphicMessagingHelper.aesCbcDec(remainingCiphertext, iv, false);
             } catch (GeneralSecurityException e) {
                 Log.e("MyTest", String.format(
                         "First block decrypted successfully. It specified a total of %d blocks, but failed to decrypt later block",
