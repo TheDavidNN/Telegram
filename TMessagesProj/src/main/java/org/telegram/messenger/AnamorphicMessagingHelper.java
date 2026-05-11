@@ -1,9 +1,13 @@
 package org.telegram.messenger;
 
 import com.google.android.exoplayer2.util.Log;
+import com.google.android.exoplayer2.util.Util;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
@@ -11,6 +15,8 @@ import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
@@ -18,11 +24,11 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class AnamorphicMessagingHelper {
-    // Class private variables
-    private static final int BLOCK_SIZE = 16;
 
     private static SecretKeySpec secretKey;
     private static long timer_start = -1;
+
+    private static final byte[] AMSG_PREFIX = {0, 0, 0, 0};
 
     static {
         try {
@@ -40,60 +46,6 @@ public class AnamorphicMessagingHelper {
 
     }
 
-    /**
-     *
-     * @param inputLen The length of the message, not including padding or the prepended number of blocks
-     * @return The number of 16-byte blocks needed to encrypt and format a message of length inputLen
-     */
-    private static byte getPaddingBlocksNeeded(int inputLen) {
-        byte blocksNeeded;
-
-        if (inputLen <= 14) {
-            /*
-            in the first block, there is room for:
-            - 1 byte specifying the number of blocks
-            - max 14 bytes of message data
-            - min 1 padding byte
-             */
-            blocksNeeded = 1;
-        } else if (inputLen <= 29) {
-            /*
-            in the second block, there is room for:
-            - max 15 bytes of message data (plus 14 from the first block)
-            - min 1 padding byte
-             */
-            blocksNeeded = 2;
-        } else {
-            int remainingBytes = inputLen - 29;
-
-            // amount of padding needed, excluding the mandatory 2 bytes
-            int extraPaddingNeeded = remainingBytes % BLOCK_SIZE == 0 ? 0 : BLOCK_SIZE - (remainingBytes % BLOCK_SIZE);
-
-            // how many blocks needed after the first two
-            byte extraBlocksNeeded = (byte) ((remainingBytes + extraPaddingNeeded) / BLOCK_SIZE);
-
-            blocksNeeded = (byte) (2 + extraBlocksNeeded);
-        }
-
-        return blocksNeeded;
-    }
-
-    public static boolean validAMsg(String aMsg, int paddingLen) {
-        int messageLen = aMsg.getBytes(StandardCharsets.UTF_8).length;
-        int paddingBytesNeeded = getPaddingBlocksNeeded(messageLen) * BLOCK_SIZE;
-
-        return paddingBytesNeeded <= paddingLen;
-    }
-
-    private static byte[] prepend(byte b, byte[] arr) {
-        byte[] tmp = new byte[arr.length + 1];
-
-        tmp[0] = b;
-        System.arraycopy(arr, 0, tmp, 1, arr.length);
-
-        return tmp;
-    }
-
     private static byte[] concat(byte[] a, byte[] b) {
         byte[] arr = new byte[a.length + b.length];
 
@@ -103,196 +55,172 @@ public class AnamorphicMessagingHelper {
         return arr;
     }
 
-    private static byte[] addPadding(byte[] arr) {
-        byte[] res = new byte[arr.length + 16 - (arr.length % 16)];
+    private static byte[] createPlaintext(byte[] prefix, short n, byte[] plaintext) {
+        byte[] arr = new byte[prefix.length + 2 + plaintext.length];
 
-        byte paddingAmount = (byte) (res.length - arr.length);
+        ByteBuffer buffer = ByteBuffer.allocate(2);
+        buffer.putShort(n);
+        byte[] byteArray = buffer.array();
 
-        System.arraycopy(arr, 0, res, 0, arr.length);
-        for (int i = arr.length; i < res.length; i++) {
-            res[i] = paddingAmount;
-        }
+        System.arraycopy(prefix, 0, arr, 0, prefix.length);
+        System.arraycopy(byteArray, 0, arr, prefix.length, byteArray.length);
+        System.arraycopy(plaintext, 0, arr, prefix.length + byteArray.length, plaintext.length);
 
-        return res;
+        return arr;
     }
 
-    /**
-     * Remove PKCS#7 padding from input.
-     *
-     * @param arr
-     * @return Input with PKCS7 padding removed
-     * @throws BadPaddingException if there is no padding, more than 16 bytes of padding, or if there is more padding than there are bytes (invalid last byte)
-     */
-    private static byte[] removePadding(byte[] arr) throws BadPaddingException {
-        byte paddingAmount = arr[arr.length - 1];
+    public static AnamorphicMessage tryEncrypt(String input, int paddingLength) {
+        // IV needs to be 16 bytes
 
-        if (paddingAmount <= 0 || paddingAmount > 16) {
-            throw new BadPaddingException("Padding should be 1-16 bytes!");
-        }
+        // If the padding is at most 1024 bytes, that is 64 blocks of size 16
+        // Since 1 byte of padding is used for IV, we have a max of 63 ciphertext blocks in the padding
+        // We use a 15-byte nonce and a 1-byte counter.
+        // A nonce of 15-bytes (120 bits) means that we are likely to encounter a collision after 2^120 messages
+        // A counter of 1 byte (8 bits) means that we can only safely encrypt 2^8 (256) blocks
+        // This is fine since we expect at most 63, if we increased the padding to the max
 
-        if (paddingAmount > arr.length) {
-            throw new BadPaddingException(
+        byte[] plaintext = input.getBytes(StandardCharsets.UTF_8);
+
+        if (paddingLength < AMSG_PREFIX.length + 2 + plaintext.length) {
+            // not enough padding
+            Log.e("MyTest",
                     String.format(
-                            "There is more padding that elements!\nAmount of padding specified: %d\nLength of input: %d",
-                            paddingAmount,
-                            arr.length
+                            "Plaintext of length %d is too long for padding of length %d",
+                            plaintext.length,
+                            paddingLength
                     )
             );
+            return null;
         }
 
-        byte[] res = new byte[arr.length - paddingAmount];
+        short n = (short) plaintext.length;
 
-        System.arraycopy(arr, 0, res, 0, res.length);
+        plaintext = createPlaintext(AMSG_PREFIX, n, plaintext);
 
-        return res;
-    }
+        Log.d("MyTest", String.format(
+                "plaintext: %s",
+                Arrays.toString(plaintext)
+        ));
 
-    private static byte[] aesCbcEnc(byte[] plaintext, byte[] iv) throws GeneralSecurityException {
+        byte[] nonce = new byte[15];
+        Utilities.random.nextBytes(nonce);
+
+        byte[] iv = new byte[16];
+        System.arraycopy(nonce, 0, iv, 0, nonce.length);
+
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
         try {
-            IvParameterSpec ivspec = new IvParameterSpec(iv);
+            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
 
-            // Create SecretKeyFactory object
+            byte[] ciphertext = cipher.doFinal(plaintext);
 
-            // Create KeySpec object and assign with
-            // constructor
+            Log.d("MyTest", String.format(
+                    "Ciphertext prefix and counter: %s",
+                    Arrays.toString(Arrays.copyOf(ciphertext, AMSG_PREFIX.length + 2))
+            ));
 
+            Log.d("MyTest", "-------------------------------\nDecrypt own message\n-------------------------------");
 
-            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
+            tryDecrypt(nonce, ciphertext);
 
-            /*
-                TODO: check if some characters in the anamorphic message take up more bytes than others.
-                If so, we need a better way to validate the input
-            */
-
-            return cipher.doFinal(addPadding(plaintext));
-        } catch (Exception e) {
-            Log.e("MyTest", String.format("Error while encrypting: %s", e));
-            throw e;
+            return new AnamorphicMessage(nonce, ciphertext);
+        } catch (NoSuchPaddingException |
+                 InvalidKeyException |
+                 BadPaddingException |
+                 InvalidAlgorithmParameterException |
+                 NoSuchAlgorithmException |
+                 IllegalBlockSizeException e) {
+            Log.e("MyTest", e.getMessage());
+            return null;
         }
-    }
-
-    private static byte[] aesCbcDec(byte[] strToDecrypt, byte[] iv, boolean usePadding) throws GeneralSecurityException {
-        try {
-            // Create IvParameterSpec object and assign with
-            // constructor
-            IvParameterSpec ivspec = new IvParameterSpec(iv);
-
-            String transformation = usePadding ? "AES/CBC/PKCS5PADDING" : "AES/CBC/NoPadding";
-
-            // TODO: try to decrypt a padded string with NoPadding to check if the "PKCS5Padding" is actually PKCS#7
-
-            Cipher cipher = Cipher.getInstance(transformation);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, ivspec);
-
-            // Return decrypted string
-            return removePadding(cipher.doFinal(strToDecrypt));
-        } catch (Exception e) {
-            Log.e("MyTest", String.format("Error while decrypting: %s", e));
-            throw e;
-        }
-    }
-
-    public static AnamorphicMessage encrypt(String input, boolean exception) throws Exception {
-        // TODO: use random IV
-        byte[] iv = new byte[16]; // {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-        Utilities.random.nextBytes(iv);
-        byte[] plaintext = input.getBytes(StandardCharsets.UTF_8);
-        byte[] formattedCiphertext = null;
-
-        byte numBlocksNeeded = getPaddingBlocksNeeded(plaintext.length);
-
-        byte[] prependedPlaintext = prepend(numBlocksNeeded, plaintext);
-
-        if (numBlocksNeeded == 1) {
-            formattedCiphertext = aesCbcEnc(prependedPlaintext, iv);
-        } else if (numBlocksNeeded > 1) {
-            byte[] firstPlaintextBlock = Arrays.copyOfRange(prependedPlaintext, 0, 15); // leaves one byte for padding
-            byte[] firstCiphertextBlock = aesCbcEnc(firstPlaintextBlock, iv);
-
-            byte[] remainingPlaintext = Arrays.copyOfRange(prependedPlaintext, 15, prependedPlaintext.length);
-            byte[] remainingCiphertext = aesCbcEnc(remainingPlaintext, iv);
-
-            formattedCiphertext = concat(firstCiphertextBlock, remainingCiphertext);
-
-        } else {
-            Log.e("MyTest", String.format("Error: numBlocksNeeded should be positive, but it is: %d", numBlocksNeeded));
-            if (exception) {
-                throw new RuntimeException(String.format("Illegal value calculated for numBlocksNeeded! Expected positive integer, got %d", numBlocksNeeded));
-            }
-        }
-
-        return new AnamorphicMessage(iv, formattedCiphertext);
     }
 
     /**
      *
-     * @return null if the plaintext does not contain a covert message. Otherwise, returns the covert message with the formatting removed
      */
-    public static String tryDecrypt(byte[] random_bytes, byte[] padding) {
-        byte[] iv = new byte[BLOCK_SIZE];
-        System.arraycopy(random_bytes, 0, iv, 0, 15);
-        iv[15] = padding[0];
+    public static String tryDecrypt(byte[] random_bytes, byte[] padding) throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
 
-        byte[] firstBlockEncrypted = Arrays.copyOfRange(padding, 1, 17);
-        byte[] firstBlockDecrypted;
+        byte[] iv = new byte[16];
+        byte[] iv2 = new byte[16];
 
-        try {
-            firstBlockDecrypted = aesCbcDec(firstBlockEncrypted, iv, false);
-        } catch (GeneralSecurityException e) {
+        System.arraycopy(random_bytes, 0, iv, 0, random_bytes.length);
+        System.arraycopy(random_bytes, 0, iv2, 0, random_bytes.length);
+
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        IvParameterSpec ivSpec2 = new IvParameterSpec(iv2);
+        Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
+
+        Cipher cipher2 = Cipher.getInstance("AES/CTR/NoPadding");
+        cipher2.init(Cipher.DECRYPT_MODE, secretKey, ivSpec2);
+
+        byte[] ciphertextPrefixAndCounter = new byte[AMSG_PREFIX.length + 2];
+        System.arraycopy(padding, 0, ciphertextPrefixAndCounter, 0, ciphertextPrefixAndCounter.length);
+
+        Log.d("MyTest", String.format(
+                "Ciphertext prefix and counter: %s",
+                Arrays.toString(ciphertextPrefixAndCounter)
+        ));
+
+        byte[] plaintextPrefixAndCounter = cipher.doFinal(ciphertextPrefixAndCounter);
+
+        Log.d("MyTest", String.format(
+                "Plaintext prefix and counter: %s",
+                Arrays.toString(plaintextPrefixAndCounter)
+        ));
+
+        byte[] prefix = new byte[AMSG_PREFIX.length];
+        System.arraycopy(plaintextPrefixAndCounter, 0, prefix, 0, AMSG_PREFIX.length);
+
+        if (!Arrays.equals(prefix, AMSG_PREFIX)) {
+            // No prefix - this is not an anamorphic message
+            Log.d("MyTest", "No amsg prefix!");
             return null;
         }
 
-        android.util.Log.d("MyTest", "First block decrypted successfully");
+        ByteBuffer buffer = ByteBuffer.allocate(2);
+        buffer.put(plaintextPrefixAndCounter[AMSG_PREFIX.length]);
+        buffer.put(plaintextPrefixAndCounter[AMSG_PREFIX.length+1]);
+        buffer.position(0);
+        short n = buffer.getShort();
 
-        // get the number of blocks encrypted
-        byte n = firstBlockDecrypted[0];
-        byte[] firstBlockSerializedString = Arrays.copyOfRange(firstBlockDecrypted, 1, firstBlockDecrypted.length);
-        String firstBlockString = new String(firstBlockSerializedString);
-
-        android.util.Log.d("MyTest", "A");
-
-        if (n == 1) {
-            return firstBlockString;
-        } else if (n > 1) {
-            android.util.Log.d("MyTest", "B");
-
-            int numRemainingCiphertextBytes = (n - 1) * BLOCK_SIZE;
-
-            // if the number of bytes needed for the message is greater than the number given, return null
-            // we minus one from the length to compensate for the one byte of padding used for the IV
-            if (numRemainingCiphertextBytes + 16 > padding.length - 1) {
-                Log.e("MyTest", String.format(
-                        "First block decrypted successfully. It specified a total of %d blocks, but the padding only contains %d bytes usable for ciphertext", padding.length - 1,
-                        n)
-                );
-                return null;
-            }
-
-            byte[] remainingCiphertext = Arrays.copyOfRange(padding, 17, 17 + numRemainingCiphertextBytes);
-
-            android.util.Log.d("MyTest", "C");
-            byte[] remainingPlaintext;
-
-            try {
-                remainingPlaintext = AnamorphicMessagingHelper.aesCbcDec(remainingCiphertext, iv, false);
-            } catch (GeneralSecurityException e) {
-                Log.e("MyTest", String.format(
-                        "First block decrypted successfully. It specified a total of %d blocks, but failed to decrypt later block",
-                        n)
-                );
-                return null;
-            }
-
-            android.util.Log.d("MyTest", "D");
-
-            String remainingBlocksString = new String(remainingPlaintext);
-
-            return firstBlockString + remainingBlocksString;
-        } else {
-            Log.e("MyTest", String.format("Expected positive number of blocks, received %d", n));
+        if (n < 0) {
+            Log.d("MyTest", "n is negative!");
             return null;
+        } else if (n == 0) {
+            // not sure why a client would send an empty amsg, but we may as well consider it
+            Log.d("MyTest", "n is 0?");
+            return "";
         }
+
+        int messageStart = AMSG_PREFIX.length + 2;
+        padding = Arrays.copyOf(padding, messageStart + n);
+
+        Log.d("MyTest", String.format(
+                "Padding[0..prefix+2+n]: %s",
+                Arrays.toString(padding)
+        ));
+
+        byte[] plaintext = cipher2.doFinal(padding);
+
+        if (!Arrays.equals(Arrays.copyOf(plaintext, AMSG_PREFIX.length), AMSG_PREFIX)) {
+            Log.e("MyTest", "plaintext suddenly does not have prefix!");
+        }
+
+        Log.d("MyTest", Arrays.toString(plaintext));
+
+        //remove prefix and length
+        plaintext = Arrays.copyOfRange(plaintext, messageStart, messageStart + n);
+
+        // TODO: don't decrypt prefix and counter twice
+
+        String amsg = new String(plaintext);
+
+        Log.d("MyTest", String.format("amsg: %s", amsg));
+
+        return amsg;
     }
 
 

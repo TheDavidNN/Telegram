@@ -733,6 +733,15 @@ public class SecretChatHelper extends BaseController {
         }
         Log.d("MyTest", "performSendEncryptedRequest 2");
 
+        /*
+        Log.d("MyTest", "Printing stack trace:");
+        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        for (int i = 1; i < elements.length; i++) {
+            StackTraceElement s = elements[i];
+            Log.d("MyTest", "\tat " + s.getClassName() + "." + s.getMethodName() + "(" + s.getFileName() + ":" + s.getLineNumber() + ")");
+        }
+         */
+
         // PerformanceTestNormal.test(req);
         // PerformanceTestAnamorphic.test(req);
 
@@ -752,7 +761,7 @@ public class SecretChatHelper extends BaseController {
                 String aMsg;
 
                 if (isTextMessage) {
-                    AnamorphicMessagingHelper.StartClock();
+                    // AnamorphicMessagingHelper.StartClock();
                 }
 
                 if (isTextMessage && enableAnamorphicMessages) {
@@ -789,21 +798,12 @@ public class SecretChatHelper extends BaseController {
 
 
                 if (aMsg != null) {
-                    if (AnamorphicMessagingHelper.validAMsg(aMsg, extraLen - 1)) { // minus 1 to leave space for 1 byte of the IV
-                        try {
-                            anamorphicMessage = AnamorphicMessagingHelper.encrypt(aMsg, true);
-                        } catch (Exception e) {
-                            Log.d("MyTest", "Failed to encrypt aMsg");
-                        }
-                    } else {
-                        // invalid covert message
-                        Log.d("MyTest", "aMsg is invalid");
-                    }
+                    anamorphicMessage = AnamorphicMessagingHelper.tryEncrypt(aMsg, extraLen);
                 }
 
                 if (anamorphicMessage != null) {
                     // use the first 15 bytes of the iv as random bytes
-                    layer.random_bytes = Arrays.copyOfRange(anamorphicMessage.iv, 0, 15);
+                    layer.random_bytes = anamorphicMessage.iv; // Arrays.copyOfRange(anamorphicMessage.iv, 0, 15);
                 } else {
                     // use random bytes
                     Utilities.random.nextBytes(layer.random_bytes);
@@ -868,7 +868,7 @@ public class SecretChatHelper extends BaseController {
                     Log.d("MyTest", "Send normal message!");
                     addRandomPadding(dataForEncryption, extraLen);
                 } else {
-                    int paddingNeeded = extraLen - 1 - anamorphicMessage.formattedCiphertext.length; // minus IV byte and ciphertext
+                    int paddingNeeded = extraLen - /*1 -*/ anamorphicMessage.formattedCiphertext.length; // minus IV byte and ciphertext
                     byte[] padding = new byte[paddingNeeded];
                     Utilities.random.nextBytes(padding);
 
@@ -876,7 +876,7 @@ public class SecretChatHelper extends BaseController {
                             remember, NativeByteBuffer.writeBytes(byte[] b) does not prepend b.length!
                             writing more data than there is space for in the buffer causes an exception to be thrown
                         */
-                    dataForEncryption.writeByte(anamorphicMessage.iv[15]);
+                    //dataForEncryption.writeByte(anamorphicMessage.iv[15]);
                     // Log.d("MyTest", String.format("Before adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
                     dataForEncryption.writeBytes(anamorphicMessage.formattedCiphertext);
                     // Log.d("MyTest", String.format("Between adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
