@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 public class PerformanceTestAnamorphic {
+
     // static final int FIXED_PADDING_RANDOM = 62;
     static int nextPaddingRand = Utilities.random.nextInt(3); // FIXED_PADDING_RANDOM;
 
@@ -111,6 +112,7 @@ public class PerformanceTestAnamorphic {
             AnamorphicMessage anamorphicMessage = null;
 
 
+            /*
             if (aMsg != null) {
                 if (AnamorphicMessagingHelper.validAMsg(aMsg, extraLen - 1)) { // minus 1 to leave space for 1 byte of the IV
                     try {
@@ -123,6 +125,9 @@ public class PerformanceTestAnamorphic {
                     Log.d("MyTest", String.format("aMsg is invalid\naMsg is %d bytes\nextraLen - 1: %d", aMsg.getBytes(StandardCharsets.UTF_8).length, extraLen-1));
                 }
             }
+            */
+
+            anamorphicMessage = AnamorphicMessagingHelper.tryEncrypt(aMsg, extraLen);
 
             if (anamorphicMessage != null) {
                 // use the first 15 bytes of the iv as random bytes
@@ -371,7 +376,7 @@ public class PerformanceTestAnamorphic {
 
             AnamorphicMessage anamorphicMessage = null;
 
-
+            /*
             if (aMsg != null) {
                 if (AnamorphicMessagingHelper.validAMsg(aMsg, extraLen - 1)) { // minus 1 to leave space for 1 byte of the IV
                     try {
@@ -384,6 +389,8 @@ public class PerformanceTestAnamorphic {
                     // Log.d("MyTest", "aMsg is invalid");
                 }
             }
+
+             */
 
             if (anamorphicMessage != null) {
                 // use the first 15 bytes of the iv as random bytes
