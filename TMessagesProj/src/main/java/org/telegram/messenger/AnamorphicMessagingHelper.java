@@ -1,11 +1,9 @@
 package org.telegram.messenger;
 
 import com.google.android.exoplayer2.util.Log;
-import com.google.android.exoplayer2.util.Util;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -26,7 +24,6 @@ import javax.crypto.spec.SecretKeySpec;
 public class AnamorphicMessagingHelper {
 
     private static SecretKeySpec secretKey;
-    private static long timer_start = -1;
 
     private static final byte[] AMSG_PREFIX = {0, 0, 0, 0};
 
@@ -221,20 +218,5 @@ public class AnamorphicMessagingHelper {
         Log.d("MyTest", String.format("amsg: %s", amsg));
 
         return amsg;
-    }
-
-
-    public static void StartClock() {
-        timer_start = System.currentTimeMillis();
-    }
-
-    public static void StopClock() {
-        long timer_stop = System.currentTimeMillis();
-
-        if (timer_start != -1) {
-            long diff = timer_stop - timer_start;
-
-            Log.d("MyTest", String.format("Diff: %d", diff));
-        }
     }
 }

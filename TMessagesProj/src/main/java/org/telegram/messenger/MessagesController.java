@@ -18298,8 +18298,6 @@ public class MessagesController extends BaseController implements NotificationCe
             } else if (baseUpdate instanceof TLRPC.TL_updateEncryptedMessagesRead) {
                 Log.d("MyTest", "TLRPC.TL_updateEncryptedMessagesRead");
 
-                AnamorphicMessagingHelper.StopClock();
-
                 TLRPC.TL_updateEncryptedMessagesRead update = (TLRPC.TL_updateEncryptedMessagesRead) baseUpdate;
                 if (markAsReadEncrypted == null) {
                     markAsReadEncrypted = new SparseIntArray();
