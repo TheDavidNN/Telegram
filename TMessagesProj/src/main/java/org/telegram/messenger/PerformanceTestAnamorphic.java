@@ -116,7 +116,7 @@ public class PerformanceTestAnamorphic {
                     try {
                         anamorphicMessage = AnamorphicMessagingHelper.encrypt(aMsg, true);
                     } catch (Exception e) {
-                        Log.d("MyTest", "Failed to encrypt aMsg");
+                        Log.e("MyTest", "Failed to encrypt aMsg");
                     }
                 } else {
                     // invalid covert message

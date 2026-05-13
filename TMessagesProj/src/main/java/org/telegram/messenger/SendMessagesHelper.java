@@ -284,7 +284,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 uploadSet.remove(path);
             }
         }
-        
+
         private void addUploadProgress(String path, long sz, float progress) {
             uploadProgresses.put(path, progress);
             uploadSize.put(path, sz);
@@ -791,7 +791,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 retriedToSendArray[index] = value;
             }
         }
-        
+
         public int topMessageId;
 
         public TLRPC.InputMedia inputUploadMedia;
@@ -1147,7 +1147,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             if (message.type == 4) {
                                 uploadMultiMedia(message, null, encryptedFile, location);
                             } else {
-                                Log.d("MyTest", "Send encrypted request 1");
                                 getSecretChatHelper().performSendEncryptedRequest(decryptedMessage, message.obj.messageOwner, message.encryptedChat, encryptedFile, message.originalPath, message.obj);
                             }
                         }
@@ -4856,7 +4855,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     } else {
                         reqSend.media = new TLRPC.TL_decryptedMessageMediaEmpty();
                     }
-                    Log.d("MyTest", "Send encrypted request 2");
+                    // Log.d("MyTest", "Send encrypted request 2");
                     getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                     if (retryMessageObject == null) {
                         getMediaDataController().cleanDraft(peer, replyToTopMsg != null ? replyToTopMsg.getId() : 0, false);
@@ -5438,7 +5437,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         }
                         reqSend.media.lat = location.geo.lat;
                         reqSend.media._long = location.geo._long;
-                        Log.d("MyTest", "Send encrypted request 3");
                         getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                     } else if (type == 2 || type == 9 && photo != null) {
                         TLRPC.PhotoSize small = photo.sizes.get(0);
@@ -5487,7 +5485,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             encryptedFile.access_hash = big.location.secret;
                             reqSend.media.key = big.location.key;
                             reqSend.media.iv = big.location.iv;
-                            Log.d("MyTest", "Send encrypted request 4");
                             getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, encryptedFile, null, newMsgObj);
                         }
                     } else if (type == 3) {
@@ -5549,7 +5546,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             encryptedFile.access_hash = document.access_hash;
                             reqSend.media.key = document.key;
                             reqSend.media.iv = document.iv;
-                            Log.d("MyTest", "Send encrypted request 5");
                             getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, encryptedFile, null, newMsgObj);
                         }
                     } else if (type == 6) {
@@ -5558,7 +5554,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         reqSend.media.first_name = user.first_name;
                         reqSend.media.last_name = user.last_name;
                         reqSend.media.user_id = user.id;
-                        Log.d("MyTest", "Send encrypted request 6");
                         getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                     } else if (type == 7 || type == 9 && document != null) {
                         if (document.access_hash != 0 && (MessageObject.isStickerDocument(document) || MessageObject.isAnimatedStickerDocument(document, true))) {
@@ -5582,7 +5577,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                                 delayedMessage.obj = newMsgObj;
                                 performSendDelayedMessage(delayedMessage);
                             } else {
-                                Log.d("MyTest", "Send encrypted request 7");
                                 getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, null, null, newMsgObj);
                             }
                         } else {
@@ -5637,7 +5631,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                                 encryptedFile.access_hash = document.access_hash;
                                 reqSend.media.key = document.key;
                                 reqSend.media.iv = document.iv;
-                                Log.d("MyTest", "Send encrypted request 8");
                                 getSecretChatHelper().performSendEncryptedRequest(reqSend, newMsgObj.messageOwner, encryptedChat, encryptedFile, null, newMsgObj);
                             }
                         }
@@ -5889,7 +5882,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         decryptedMessage.media.size = message.videoEditedInfo.estimatedSize;
                         decryptedMessage.media.key = message.videoEditedInfo.key;
                         decryptedMessage.media.iv = message.videoEditedInfo.iv;
-                        Log.d("MyTest", "Send encrypted request 9");
                         getSecretChatHelper().performSendEncryptedRequest(decryptedMessage, message.obj.messageOwner, message.encryptedChat, message.videoEditedInfo.encryptedFile, message.originalPath, message.obj);
                         message.videoEditedInfo.encryptedFile = null;
                         return;
@@ -6290,7 +6282,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         if (found) {
                             getMessagesStorage().replaceMessageIfExists(arrayList.get(0).obj.messageOwner, null, null, false);
                         }
-                        Log.d("MyTest", "Send encrypted request 10");
                         getSecretChatHelper().performSendEncryptedRequest((TLRPC.DecryptedMessage) message.sendEncryptedRequest, message.obj.messageOwner, message.encryptedChat, null, null, message.obj);
                     }
                 });
@@ -6998,9 +6989,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     protected void performSendMessageRequest(final TLObject req, final MessageObject msgObj, final String originalPath, DelayedMessage parentMessage, boolean check, DelayedMessage delayedMessage, Object parentObject, HashMap<String, String> params, boolean scheduled) {
-        Log.d("MyTest", String.format(
-                "performSendMessageRequest(%s)", req.getClass()
-        ));
         if (!(req instanceof TLRPC.TL_messages_editMessage)) {
             if (check) {
                 DelayedMessage maxDelayedMessage = findMaxDelayedMessageForMessageId(msgObj.getId(), msgObj.getDialogId());
@@ -7009,7 +6997,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     if (parentMessage != null && parentMessage.requests != null) {
                         maxDelayedMessage.requests.addAll(parentMessage.requests);
                     }
-                    Log.d("MyTest", "Return 1");
                     return;
                 }
             }
@@ -7017,11 +7004,9 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         final TLRPC.Message newMsgObj = msgObj.messageOwner;
         putToSendingMessages(newMsgObj, scheduled);
         if (!StarsController.getInstance(currentAccount).beforeSendingFinalRequest(req, msgObj, () -> performSendMessageRequest(req, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled))) {
-            Log.d("MyTest", "Return 2");
             return;
         }
         if (!BotForumHelper.getInstance(currentAccount).beforeSendingFinalRequest(req, msgObj, () -> performSendMessageRequest(req, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled))) {
-            Log.d("MyTest", "Return 3");
             return;
         }
         newMsgObj.reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
@@ -7029,12 +7014,10 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 if (FileRefController.isFileRefErrorCover(error.text)) {
                     if (removeCoverFromRequest(req)) {
                         performSendMessageRequest(req, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled);
-                        Log.d("MyTest", "Return 4");
                         return;
                     }
                 } else if (parentObject != null) {
                     getFileRefController().requestReference(parentObject, req, msgObj, originalPath, parentMessage, check, delayedMessage, scheduled);
-                    Log.d("MyTest", "Return 5");
                     return;
                 } else if (delayedMessage != null) {
                     AndroidUtilities.runOnUIThread(() -> {
@@ -7057,7 +7040,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         delayedMessage.performMediaUpload = true;
                         performSendDelayedMessage(delayedMessage);
                     });
-                    Log.d("MyTest", "Return 6");
                     return;
                 }
             }
@@ -7073,7 +7055,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             performSendMessageRequest(r, msgObj, originalPath, parentMessage, check, delayedMessage, parentObject, params, scheduled);
                         }
                     });
-                    Log.d("MyTest", "Return 7");
                     return;
                 } else if ("BALANCE_TOO_LOW".equalsIgnoreCase(error.text)) {
                     final TLRPC.TL_inputMediaStakeDice media = (TLRPC.TL_inputMediaStakeDice) ((TLRPC.TL_messages_sendMedia) req).media;
@@ -7091,7 +7072,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             arrayList.add(msgObj);
                             cancelSendingMessage(arrayList);
                         });
-                        Log.d("MyTest", "Return 8");
                         return;
                     }
                 }
@@ -7144,20 +7124,17 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     }
                 });
             } else {
-                Log.d("MyTest", "else-statement, go!");
                 AndroidUtilities.runOnUIThread(() -> {
 
                     boolean currentSchedule = scheduled;
                     boolean isSentError = false;
                     if (error == null) {
-                        Log.d("MyTest", "error == null");
                         final int oldId = newMsgObj.id;
                         final ArrayList<TLRPC.Message> sentMessages = new ArrayList<>();
                         final String attachPath = newMsgObj.attachPath;
                         final int existFlags;
                         boolean scheduledOnline = newMsgObj.date == 0x7FFFFFFE;
                         if (response instanceof TLRPC.TL_updateShortSentMessage) {
-                            Log.d("MyTest", "TLRPC.TL_updateShortSentMessage");
                             final TLRPC.TL_updateShortSentMessage res = (TLRPC.TL_updateShortSentMessage) response;
                             updateMediaPaths(msgObj, null, res.id, null, false);
                             existFlags = msgObj.getMediaExistanceFlags();
@@ -7192,7 +7169,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             Utilities.stageQueue.postRunnable(() -> getMessagesController().processNewDifferenceParams(-1, res.pts, res.date, res.pts_count));
                             sentMessages.add(newMsgObj);
                         } else if (response instanceof TLRPC.Updates) {
-                            Log.d("MyTest", "TLRPC.Updates");
                             final TLRPC.Updates updates = (TLRPC.Updates) response;
                             ArrayList<TLRPC.Update> updatesArr = ((TLRPC.Updates) response).updates;
                             TLRPC.Message message = null;
@@ -7376,12 +7352,10 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                             }
                         }
                     } else {
-                        Log.d("MyTest", "error != null");
                         AlertsCreator.processError(currentAccount, error, null, req);
                         isSentError = true;
                     }
                     if (isSentError) {
-                        Log.d("MyTest", "isSentError");
                         getMessagesStorage().markMessageAsSendError(newMsgObj, scheduled ? 1 : 0);
                         newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SEND_ERROR;
                         if (error != null && error.text != null && error.text.startsWith("ALLOW_PAYMENT_REQUIRED_")) {
