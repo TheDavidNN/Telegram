@@ -153,17 +153,7 @@ public class AnamorphicMessagingHelper {
         byte[] ciphertextPrefixAndCounter = new byte[AMSG_PREFIX.length + 2];
         System.arraycopy(padding, 0, ciphertextPrefixAndCounter, 0, ciphertextPrefixAndCounter.length);
 
-        Log.d("MyTest", String.format(
-                "Ciphertext prefix and counter: %s",
-                Arrays.toString(ciphertextPrefixAndCounter)
-        ));
-
         byte[] plaintextPrefixAndCounter = cipher.doFinal(ciphertextPrefixAndCounter);
-
-        Log.d("MyTest", String.format(
-                "Plaintext prefix and counter: %s",
-                Arrays.toString(plaintextPrefixAndCounter)
-        ));
 
         byte[] prefix = new byte[AMSG_PREFIX.length];
         System.arraycopy(plaintextPrefixAndCounter, 0, prefix, 0, AMSG_PREFIX.length);
@@ -192,18 +182,11 @@ public class AnamorphicMessagingHelper {
         int messageStart = AMSG_PREFIX.length + 2;
         padding = Arrays.copyOf(padding, messageStart + n);
 
-        Log.d("MyTest", String.format(
-                "Padding[0..prefix+2+n]: %s",
-                Arrays.toString(padding)
-        ));
-
         byte[] plaintext = cipher2.doFinal(padding);
 
         if (!Arrays.equals(Arrays.copyOf(plaintext, AMSG_PREFIX.length), AMSG_PREFIX)) {
             Log.e("MyTest", "plaintext suddenly does not have prefix!");
         }
-
-        Log.d("MyTest", Arrays.toString(plaintext));
 
         //remove prefix and length
         plaintext = Arrays.copyOfRange(plaintext, messageStart, messageStart + n);
@@ -211,8 +194,6 @@ public class AnamorphicMessagingHelper {
         // TODO: don't decrypt prefix and counter twice
 
         String amsg = new String(plaintext);
-
-        Log.d("MyTest", String.format("amsg: %s", amsg));
 
         return amsg;
     }
