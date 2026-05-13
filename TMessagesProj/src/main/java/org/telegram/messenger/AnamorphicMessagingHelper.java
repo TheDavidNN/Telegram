@@ -243,19 +243,16 @@ public class AnamorphicMessagingHelper {
             return null;
         }
 
-        android.util.Log.d("MyTest", "First block decrypted successfully");
+        // android.util.Log.d("MyTest", "First block decrypted successfully");
 
         // get the number of blocks encrypted
         byte n = firstBlockDecrypted[0];
         byte[] firstBlockSerializedString = Arrays.copyOfRange(firstBlockDecrypted, 1, firstBlockDecrypted.length);
         String firstBlockString = new String(firstBlockSerializedString);
 
-        android.util.Log.d("MyTest", "A");
-
         if (n == 1) {
             return firstBlockString;
         } else if (n > 1) {
-            android.util.Log.d("MyTest", "B");
 
             int numRemainingCiphertextBytes = (n - 1) * BLOCK_SIZE;
 
@@ -271,7 +268,6 @@ public class AnamorphicMessagingHelper {
 
             byte[] remainingCiphertext = Arrays.copyOfRange(padding, 17, 17 + numRemainingCiphertextBytes);
 
-            android.util.Log.d("MyTest", "C");
             byte[] remainingPlaintext;
 
             try {
@@ -283,8 +279,6 @@ public class AnamorphicMessagingHelper {
                 );
                 return null;
             }
-
-            android.util.Log.d("MyTest", "D");
 
             String remainingBlocksString = new String(remainingPlaintext);
 
