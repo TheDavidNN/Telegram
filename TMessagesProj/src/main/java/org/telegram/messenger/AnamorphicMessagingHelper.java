@@ -25,7 +25,7 @@ public class AnamorphicMessagingHelper {
 
     private static SecretKeySpec secretKey;
 
-    private static final byte[] AMSG_PREFIX = {0, 0, 0, 0};
+    public static final byte[] AMSG_PREFIX = {0, 0, 0, 0};
 
     static {
         try {
@@ -37,7 +37,7 @@ public class AnamorphicMessagingHelper {
             SecretKey tmp = factory.generateSecret(spec);
             secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
-            Log.e("MyTest", String.format("Error while encrypting: %s", e));
+            Log.e("MyTest", String.format("Error while creating secret key: %s", e));
             throw new RuntimeException(e);
         }
 
@@ -80,6 +80,7 @@ public class AnamorphicMessagingHelper {
 
         if (paddingLength < AMSG_PREFIX.length + 2 + plaintext.length) {
             // not enough padding
+            /*
             Log.e("MyTest",
                     String.format(
                             "Plaintext of length %d is too long for padding of length %d",
@@ -87,6 +88,7 @@ public class AnamorphicMessagingHelper {
                             paddingLength
                     )
             );
+             */
             return null;
         }
 
@@ -94,10 +96,12 @@ public class AnamorphicMessagingHelper {
 
         plaintext = createPlaintext(AMSG_PREFIX, n, plaintext);
 
+        /*
         Log.d("MyTest", String.format(
                 "plaintext: %s",
                 Arrays.toString(plaintext)
         ));
+         */
 
         byte[] nonce = new byte[15];
         Utilities.random.nextBytes(nonce);
@@ -113,13 +117,6 @@ public class AnamorphicMessagingHelper {
 
             byte[] ciphertext = cipher.doFinal(plaintext);
 
-            Log.d("MyTest", String.format(
-                    "Ciphertext prefix and counter: %s",
-                    Arrays.toString(Arrays.copyOf(ciphertext, AMSG_PREFIX.length + 2))
-            ));
-
-            Log.d("MyTest", "-------------------------------\nDecrypt own message\n-------------------------------");
-
             tryDecrypt(nonce, ciphertext);
 
             return new AnamorphicMessage(nonce, ciphertext);
@@ -129,7 +126,7 @@ public class AnamorphicMessagingHelper {
                  InvalidAlgorithmParameterException |
                  NoSuchAlgorithmException |
                  IllegalBlockSizeException e) {
-            Log.e("MyTest", e.getMessage());
+            // Log.e("MyTest", e.getMessage());
             return null;
         }
     }

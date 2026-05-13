@@ -36,7 +36,6 @@ import android.os.SystemClock;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
@@ -18296,7 +18295,6 @@ public class MessagesController extends BaseController implements NotificationCe
                     }
                 }
             } else if (baseUpdate instanceof TLRPC.TL_updateEncryptedMessagesRead) {
-                Log.d("MyTest", "TLRPC.TL_updateEncryptedMessagesRead");
 
                 TLRPC.TL_updateEncryptedMessagesRead update = (TLRPC.TL_updateEncryptedMessagesRead) baseUpdate;
                 if (markAsReadEncrypted == null) {
@@ -18306,7 +18304,6 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (tasks == null) {
                     tasks = new ArrayList<>();
                 }
-
                 tasks.add((TLRPC.TL_updateEncryptedMessagesRead) baseUpdate);
             } else if (baseUpdate instanceof TLRPC.TL_updateChatParticipantAdd) {
                 TLRPC.TL_updateChatParticipantAdd update = (TLRPC.TL_updateChatParticipantAdd) baseUpdate;
