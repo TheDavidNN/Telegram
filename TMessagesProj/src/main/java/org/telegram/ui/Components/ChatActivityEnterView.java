@@ -64,6 +64,7 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.style.ImageSpan;
+import android.util.Log;
 import android.util.Property;
 import android.util.TypedValue;
 import android.view.ActionMode;
@@ -138,6 +139,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.NotificationsController;
+import org.telegram.messenger.PerformanceClock;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.SharedConfig;
@@ -3333,7 +3335,24 @@ public class ChatActivityEnterView extends FrameLayout implements
             if ((messageSendPreview != null && messageSendPreview.isShowing()) || (runningAnimationAudio != null && runningAnimationAudio.isRunning()) || moveToSendStateRunnable != null) {
                 return;
             }
-            sendMessage();
+            int n = 100;
+            CharSequence input = messageEditText.getTextToUse();
+            PerformanceClock.init(n);
+
+            for (int i = 0; i < n; i++) {
+                messageEditText.setText(input);
+
+                PerformanceClock.StartClock();
+                sendMessage();
+
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Log.e("MyTest", "Error in Thread.sleep()!");
+                }
+            }
+
+            PerformanceClock.printMeasurements();
         });
         sendButton.setOnLongClickListener(this::onSendLongClick);
 //        ScaleStateListAnimator.apply(sendButton);

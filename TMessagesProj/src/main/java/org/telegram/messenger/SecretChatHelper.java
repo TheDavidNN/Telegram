@@ -704,7 +704,7 @@ public class SecretChatHelper extends BaseController {
         extraLen += (2 + nextPaddingRand) * 16; // adds element in { 32, 48, 64}
         nextPaddingRand = Utilities.random.nextInt(3);
 
-        Log.d("MyTest", String.format("extraLen (padding length): %d", extraLen));
+        // Log.d("MyTest", String.format("extraLen (padding length): %d", extraLen));
 
         int minNextBytes;
         if (nextPaddingRand == 0) {
@@ -716,6 +716,7 @@ public class SecretChatHelper extends BaseController {
         }
 
         int maxNextBytes = 29 + (nextPaddingRand * 16);
+        /*
         Log.d("MyTest", String.format(
                 "Create next random!\nnextPaddingRand: %d\nNext aMsg can contain min. %d bytes (%d if msg is correct length)",
                 nextPaddingRand,
@@ -723,15 +724,17 @@ public class SecretChatHelper extends BaseController {
                 maxNextBytes
         ));
 
+         */
+
         return extraLen;
     }
 
     protected void performSendEncryptedRequest(TLRPC.DecryptedMessage req, TLRPC.Message newMsgObj, TLRPC.EncryptedChat chat, TLRPC.InputEncryptedFile encryptedFile, String originalPath, MessageObject newMsg) {
-        Log.d("MyTest", "performSendEncryptedRequest 1");
+        // Log.d("MyTest", "performSendEncryptedRequest 1");
         if (req == null || chat.auth_key == null || chat instanceof TLRPC.TL_encryptedChatRequested || chat instanceof TLRPC.TL_encryptedChatWaiting) {
             return;
         }
-        Log.d("MyTest", "performSendEncryptedRequest 2");
+        // Log.d("MyTest", "performSendEncryptedRequest 2");
 
         // PerformanceTestNormal.test(req);
         // PerformanceTestAnamorphic.test(req);
@@ -755,6 +758,8 @@ public class SecretChatHelper extends BaseController {
                     AnamorphicMessagingHelper.StartClock();
                 }
 
+                // UNCOMMENT TO USE / TEST REGEX
+                /*
                 if (isTextMessage && enableAnamorphicMessages) {
                     if (ANAMORPHIC_MSG_PATTERN.matcher(msg).matches()) {
                         String[] split = msg.split("\\(|\\)");
@@ -762,15 +767,20 @@ public class SecretChatHelper extends BaseController {
                         msg = split[0];
                         aMsg = split[1];
 
-                        Log.d("MyTest", String.format("m  : %s", msg));
-                        Log.d("MyTest", String.format("m' : %s", aMsg));
+                        // Log.d("MyTest", String.format("m  : %s", msg));
+                        // Log.d("MyTest", String.format("m' : %s", aMsg));
                     } else {
                         aMsg = null;
-                        Log.d("MyTest", "No match found for anamorphic message!");
+                        // Log.d("MyTest", "No match found for anamorphic message!");
                     }
                 } else {
                     aMsg = null;
-                }
+                } */
+
+                // UNCOMMENT TO TEST WITHOUT REGEX
+                aMsg = null;
+                // aMsg = "TestTestTestTest";
+
                 req.message = msg;
 
                 TLObject toEncryptObject;
@@ -793,11 +803,11 @@ public class SecretChatHelper extends BaseController {
                         try {
                             anamorphicMessage = AnamorphicMessagingHelper.encrypt(aMsg, true);
                         } catch (Exception e) {
-                            Log.d("MyTest", "Failed to encrypt aMsg");
+                            Log.e("MyTest", "Failed to encrypt aMsg");
                         }
                     } else {
                         // invalid covert message
-                        Log.d("MyTest", "aMsg is invalid");
+                        // Log.d("MyTest", "aMsg is invalid");
                     }
                 }
 
@@ -811,7 +821,7 @@ public class SecretChatHelper extends BaseController {
 
                 toEncryptObject = layer;
 
-                Log.d("MyTest", String.format("layer.random_bytes.length: %d", layer.random_bytes.length));
+                // Log.d("MyTest", String.format("layer.random_bytes.length: %d", layer.random_bytes.length));
 
                 if (chat.seq_in == 0 && chat.seq_out == 0) {
                     if (chat.admin_id == getUserConfig().getClientUserId()) {
@@ -831,7 +841,7 @@ public class SecretChatHelper extends BaseController {
                         chat.key_create_date = getConnectionsManager().getCurrentTime();
                     }
                     chat.key_use_count_out++;
-                    Log.d("MyTest", String.format("chat.key_use_count_out: %d", chat.key_use_count_out));
+                    // Log.d("MyTest", String.format("chat.key_use_count_out: %d", chat.key_use_count_out));
                     if ((chat.key_use_count_out >= 100 || chat.key_create_date < getConnectionsManager().getCurrentTime() - 60 * 60 * 24 * 7) && chat.exchange_id == 0 && chat.future_key_fingerprint == 0) {
                         requestNewSecretChatKey(chat);
                     }
@@ -848,13 +858,16 @@ public class SecretChatHelper extends BaseController {
                     FileLog.d(req + " send message with in_seq = " + layer.in_seq_no + " out_seq = " + layer.out_seq_no);
                 }
 
+                /*
                 Log.d("MyTest", String.format(
                         "Sending!\nlayer.out_seq_no: %d",
                         layer.out_seq_no
                 ));
 
+                 */
+
                 // int len = toEncryptObject.getObjectSize();
-                Log.d("MyTest", String.format("toEncryptObject.getObjectSize(): %d", toEncryptObject.getObjectSize()));
+                // Log.d("MyTest", String.format("toEncryptObject.getObjectSize(): %d", toEncryptObject.getObjectSize()));
                 NativeByteBuffer toEncrypt = new NativeByteBuffer(4 + layerLen);
                 toEncrypt.writeInt32(layerLen);
                 toEncryptObject.serializeToStream(toEncrypt);
@@ -865,7 +878,7 @@ public class SecretChatHelper extends BaseController {
                 dataForEncryption.writeBytes(toEncrypt);
 
                 if (anamorphicMessage == null) {
-                    Log.d("MyTest", "Send normal message!");
+                    // Log.d("MyTest", "Send normal message!");
                     addRandomPadding(dataForEncryption, extraLen);
                 } else {
                     int paddingNeeded = extraLen - 1 - anamorphicMessage.formattedCiphertext.length; // minus IV byte and ciphertext
@@ -883,11 +896,13 @@ public class SecretChatHelper extends BaseController {
                     dataForEncryption.writeBytes(padding);
                     // Log.d("MyTest", String.format("After adding ciphertext and padding: %d / %d", dataForEncryption.position(), dataForEncryption.limit()));
 
+                    /*
                     Log.d("MyTest", String.format(
                             "Send anamorphic!\nciphertext: %s\niv: %s",
                             Arrays.toString(anamorphicMessage.formattedCiphertext),
                             Arrays.toString(anamorphicMessage.iv)
                     ));
+                     */
                 }
 
                 byte[] messageKey = new byte[16];
@@ -1815,13 +1830,14 @@ public class SecretChatHelper extends BaseController {
             actionClassString = "layer.message is null!";
         }
 
-
+        /*
         Log.d("MyTest", String.format(
                 "Decrypt TL_decryptedMessageLayer!\nlayer.message.getClass(): %s\nlayer.message.message: %s\nlayer.message.action.action.getClass(): %s",
                 messageClassString,
                 messageString,
                 actionClassString
         ));
+         */
     }
 
     protected ArrayList<TLRPC.Message> decryptMessage(TLRPC.EncryptedMessage message) {
@@ -1901,10 +1917,10 @@ public class SecretChatHelper extends BaseController {
 
                 // get padding before buffer is reused
                 int paddingLength = is.limit() - is.position();
-                Log.d("MyTest", String.format("paddingLength: %d", paddingLength));
+                // Log.d("MyTest", String.format("paddingLength: %d", paddingLength));
                 byte[] padding = new byte[paddingLength];
                 is.readBytes(padding, 0, paddingLength, false);
-                Log.d("MyTest", String.format("is.hasRemaining() %b", is.hasRemaining()));
+                // Log.d("MyTest", String.format("is.hasRemaining() %b", is.hasRemaining()));
 
                 is.reuse();
                 if (!new_key_used) {
@@ -1924,10 +1940,12 @@ public class SecretChatHelper extends BaseController {
                         layer.message.message = String.format("%s \n\naMsg:\n%s", layer.message.message, aMsg);
                     }
 
+                    /*
                     Log.d("MyTest", String.format(
                             "decryption done!\nmessage: %s",
                             layer.message.message
                     ));
+                     */
 
                     if (chat.seq_in == 0 && chat.seq_out == 0) {
                         if (chat.admin_id == getUserConfig().getClientUserId()) {
