@@ -67,10 +67,7 @@ public class AnamorphicMessagingHelper {
     }
 
     public static AnamorphicMessage tryEncrypt(String input, int paddingLength) {
-        // IV needs to be 16 bytes
 
-        // If the padding is at most 1024 bytes, that is 64 blocks of size 16
-        // Since 1 byte of padding is used for IV, we have a max of 63 ciphertext blocks in the padding
         // We use a 15-byte nonce and a 1-byte counter.
         // A nonce of 15-bytes (120 bits) means that we are likely to encounter a collision after 2^120 messages
         // A counter of 1 byte (8 bits) means that we can only safely encrypt 2^8 (256) blocks
@@ -80,28 +77,12 @@ public class AnamorphicMessagingHelper {
 
         if (paddingLength < AMSG_PREFIX.length + 2 + plaintext.length) {
             // not enough padding
-            /*
-            Log.e("MyTest",
-                    String.format(
-                            "Plaintext of length %d is too long for padding of length %d",
-                            plaintext.length,
-                            paddingLength
-                    )
-            );
-             */
             return null;
         }
 
         short n = (short) plaintext.length;
 
         plaintext = createPlaintext(AMSG_PREFIX, n, plaintext);
-
-        /*
-        Log.d("MyTest", String.format(
-                "plaintext: %s",
-                Arrays.toString(plaintext)
-        ));
-         */
 
         byte[] nonce = new byte[15];
         Utilities.random.nextBytes(nonce);
@@ -137,18 +118,12 @@ public class AnamorphicMessagingHelper {
     public static String tryDecrypt(byte[] random_bytes, byte[] padding) throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
 
         byte[] iv = new byte[16];
-        // byte[] iv2 = new byte[16];
 
         System.arraycopy(random_bytes, 0, iv, 0, random_bytes.length);
-        // System.arraycopy(random_bytes, 0, iv2, 0, random_bytes.length);
 
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
-        // IvParameterSpec ivSpec2 = new IvParameterSpec(iv2);
         Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
         cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
-
-        // Cipher cipher2 = Cipher.getInstance("AES/CTR/NoPadding");
-        // cipher2.init(Cipher.DECRYPT_MODE, secretKey, ivSpec2);
 
         byte[] ciphertextPrefixAndCounter = new byte[AMSG_PREFIX.length + 2];
         System.arraycopy(padding, 0, ciphertextPrefixAndCounter, 0, ciphertextPrefixAndCounter.length);
@@ -160,7 +135,6 @@ public class AnamorphicMessagingHelper {
 
         if (!Arrays.equals(prefix, AMSG_PREFIX)) {
             // No prefix - this is not an anamorphic message
-            // Log.d("MyTest", "No amsg prefix!");
             return null;
         }
 
