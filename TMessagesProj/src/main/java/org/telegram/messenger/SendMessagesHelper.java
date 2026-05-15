@@ -3826,35 +3826,8 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     public void sendMessage(SendMessageParams sendMessageParams) {
-        boolean enableMultiMessages = false;
-
-        String prependMessage = ""; // "0.0.7 ";
-
         String message = prependMessage + sendMessageParams.message;
         String caption = sendMessageParams.caption;
-
-        // match for strings such as: 10x"abc"
-        String sendMultipleTimesPattern = "^\\d*[x\\*]\".*\"$";
-
-        if (enableMultiMessages) {
-            if (Pattern.matches(sendMultipleTimesPattern, message)) {
-                String[] split = message.split("x|\"");
-
-                if (split.length == 2) {
-                    try {
-
-                        int n = Integer.parseInt(split[0]);
-                        String msg = split[1];
-
-                        for (int i = 0; i < n; i++) {
-                            // send message msg
-                        }
-                    } catch (NumberFormatException e) {
-
-                    }
-                }
-            }
-        }
 
         TLRPC.MessageMedia location = sendMessageParams.location;
         TLRPC.TL_photo photo = sendMessageParams.photo;
