@@ -3335,24 +3335,8 @@ public class ChatActivityEnterView extends FrameLayout implements
             if ((messageSendPreview != null && messageSendPreview.isShowing()) || (runningAnimationAudio != null && runningAnimationAudio.isRunning()) || moveToSendStateRunnable != null) {
                 return;
             }
-            int n = 100;
-            CharSequence input = messageEditText.getTextToUse();
-            PerformanceClock.init(n);
 
-            for (int i = 0; i < n; i++) {
-                messageEditText.setText(input);
-
-                PerformanceClock.StartClock();
-                sendMessage();
-
-                try {
-                    Thread.sleep(4000);
-                } catch (InterruptedException e) {
-                    Log.e("MyTest", "Error in Thread.sleep()!");
-                }
-            }
-
-            PerformanceClock.printMeasurements();
+            sendMessage();
         });
         sendButton.setOnLongClickListener(this::onSendLongClick);
 //        ScaleStateListAnimator.apply(sendButton);
