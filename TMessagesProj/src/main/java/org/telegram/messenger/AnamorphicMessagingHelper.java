@@ -137,18 +137,18 @@ public class AnamorphicMessagingHelper {
     public static String tryDecrypt(byte[] random_bytes, byte[] padding) throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
 
         byte[] iv = new byte[16];
-        byte[] iv2 = new byte[16];
+        // byte[] iv2 = new byte[16];
 
         System.arraycopy(random_bytes, 0, iv, 0, random_bytes.length);
-        System.arraycopy(random_bytes, 0, iv2, 0, random_bytes.length);
+        // System.arraycopy(random_bytes, 0, iv2, 0, random_bytes.length);
 
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
-        IvParameterSpec ivSpec2 = new IvParameterSpec(iv2);
+        // IvParameterSpec ivSpec2 = new IvParameterSpec(iv2);
         Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
         cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
 
-        Cipher cipher2 = Cipher.getInstance("AES/CTR/NoPadding");
-        cipher2.init(Cipher.DECRYPT_MODE, secretKey, ivSpec2);
+        // Cipher cipher2 = Cipher.getInstance("AES/CTR/NoPadding");
+        // cipher2.init(Cipher.DECRYPT_MODE, secretKey, ivSpec2);
 
         byte[] ciphertextPrefixAndCounter = new byte[AMSG_PREFIX.length + 2];
         System.arraycopy(padding, 0, ciphertextPrefixAndCounter, 0, ciphertextPrefixAndCounter.length);
@@ -160,7 +160,7 @@ public class AnamorphicMessagingHelper {
 
         if (!Arrays.equals(prefix, AMSG_PREFIX)) {
             // No prefix - this is not an anamorphic message
-            Log.d("MyTest", "No amsg prefix!");
+            // Log.d("MyTest", "No amsg prefix!");
             return null;
         }
 
@@ -182,7 +182,7 @@ public class AnamorphicMessagingHelper {
         int messageStart = AMSG_PREFIX.length + 2;
         padding = Arrays.copyOf(padding, messageStart + n);
 
-        byte[] plaintext = cipher2.doFinal(padding);
+        byte[] plaintext = cipher.doFinal(padding); // cipher2.doFinal(padding);
 
         if (!Arrays.equals(Arrays.copyOf(plaintext, AMSG_PREFIX.length), AMSG_PREFIX)) {
             Log.e("MyTest", "plaintext suddenly does not have prefix!");
