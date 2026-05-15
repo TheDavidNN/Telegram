@@ -25,11 +25,11 @@ public class AnamorphicMessagingHelper {
 
     static {
         try {
-            String SECRET_KEY = "my_super_secret_key_ho_ho_ho";
-            String SALT = "ssshhhhhhhhhhh!!!!";
+            String DOUBLE_SECRET_KEY = "SUPER_SECRET_KEY";
+            String SALT = "SECRET_SALT";
 
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec spec = new PBEKeySpec(SECRET_KEY.toCharArray(), SALT.getBytes(), 65536, 256);
+            KeySpec spec = new PBEKeySpec(DOUBLE_SECRET_KEY.toCharArray(), SALT.getBytes(), 65536, 256);
             SecretKey tmp = factory.generateSecret(spec);
             secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
