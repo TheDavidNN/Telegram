@@ -22,7 +22,6 @@ public class AnamorphicMessagingHelper {
     private static final int BLOCK_SIZE = 16;
 
     private static SecretKeySpec secretKey;
-    private static long timer_start = -1;
 
     static {
         try {
@@ -180,8 +179,6 @@ public class AnamorphicMessagingHelper {
 
             String transformation = usePadding ? "AES/CBC/PKCS5PADDING" : "AES/CBC/NoPadding";
 
-            // TODO: try to decrypt a padded string with NoPadding to check if the "PKCS5Padding" is actually PKCS#7
-
             Cipher cipher = Cipher.getInstance(transformation);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, ivspec);
 
@@ -194,7 +191,6 @@ public class AnamorphicMessagingHelper {
     }
 
     public static AnamorphicMessage encrypt(String input, boolean exception) throws Exception {
-        // TODO: use random IV
         byte[] iv = new byte[16]; // {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
         Utilities.random.nextBytes(iv);
         byte[] plaintext = input.getBytes(StandardCharsets.UTF_8);
@@ -243,8 +239,6 @@ public class AnamorphicMessagingHelper {
             return null;
         }
 
-        // android.util.Log.d("MyTest", "First block decrypted successfully");
-
         // get the number of blocks encrypted
         byte n = firstBlockDecrypted[0];
         byte[] firstBlockSerializedString = Arrays.copyOfRange(firstBlockDecrypted, 1, firstBlockDecrypted.length);
@@ -286,21 +280,6 @@ public class AnamorphicMessagingHelper {
         } else {
             Log.e("MyTest", String.format("Expected positive number of blocks, received %d", n));
             return null;
-        }
-    }
-
-
-    public static void StartClock() {
-        timer_start = System.currentTimeMillis();
-    }
-
-    public static void StopClock() {
-        long timer_stop = System.currentTimeMillis();
-
-        if (timer_start != -1) {
-            long diff = timer_stop - timer_start;
-
-            Log.d("MyTest", String.format("Diff: %d", diff));
         }
     }
 }

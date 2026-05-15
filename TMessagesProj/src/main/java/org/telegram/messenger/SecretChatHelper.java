@@ -730,15 +730,9 @@ public class SecretChatHelper extends BaseController {
     }
 
     protected void performSendEncryptedRequest(TLRPC.DecryptedMessage req, TLRPC.Message newMsgObj, TLRPC.EncryptedChat chat, TLRPC.InputEncryptedFile encryptedFile, String originalPath, MessageObject newMsg) {
-        // Log.d("MyTest", "performSendEncryptedRequest 1");
         if (req == null || chat.auth_key == null || chat instanceof TLRPC.TL_encryptedChatRequested || chat instanceof TLRPC.TL_encryptedChatWaiting) {
             return;
         }
-        // Log.d("MyTest", "performSendEncryptedRequest 2");
-
-        // PerformanceTestNormal.test(req);
-        // PerformanceTestAnamorphic.test(req);
-
 
         getSendMessagesHelper().putToSendingMessages(newMsgObj, false);
         Utilities.stageQueue.postRunnable(() -> {
@@ -754,32 +748,18 @@ public class SecretChatHelper extends BaseController {
                 */
                 String aMsg;
 
-                if (isTextMessage) {
-                    AnamorphicMessagingHelper.StartClock();
-                }
-
-                // UNCOMMENT TO USE / TEST REGEX
-                /*
                 if (isTextMessage && enableAnamorphicMessages) {
                     if (ANAMORPHIC_MSG_PATTERN.matcher(msg).matches()) {
                         String[] split = msg.split("\\(|\\)");
 
                         msg = split[0];
                         aMsg = split[1];
-
-                        // Log.d("MyTest", String.format("m  : %s", msg));
-                        // Log.d("MyTest", String.format("m' : %s", aMsg));
                     } else {
                         aMsg = null;
-                        // Log.d("MyTest", "No match found for anamorphic message!");
                     }
                 } else {
                     aMsg = null;
-                } */
-
-                // UNCOMMENT TO TEST WITHOUT REGEX
-                aMsg = null;
-                // aMsg = "TestTestTestTest";
+                }
 
                 req.message = msg;
 
