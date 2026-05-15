@@ -3826,7 +3826,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     public void sendMessage(SendMessageParams sendMessageParams) {
-        String message = prependMessage + sendMessageParams.message;
+        String message = sendMessageParams.message;
         String caption = sendMessageParams.caption;
 
         TLRPC.MessageMedia location = sendMessageParams.location;
