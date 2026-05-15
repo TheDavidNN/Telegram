@@ -18295,7 +18295,6 @@ public class MessagesController extends BaseController implements NotificationCe
                     }
                 }
             } else if (baseUpdate instanceof TLRPC.TL_updateEncryptedMessagesRead) {
-                PerformanceClock.StopClock();
 
                 TLRPC.TL_updateEncryptedMessagesRead update = (TLRPC.TL_updateEncryptedMessagesRead) baseUpdate;
                 if (markAsReadEncrypted == null) {
